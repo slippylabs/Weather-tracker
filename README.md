@@ -1,4 +1,4 @@
-# Wedding Weather Tracker — Red Bank, NJ · Sept 5–7, 2026
+# Wedding Weather Tracker
 
 Multi-source rain outlook for one weekend, built for phones, live at https://weather.mhpwebserver.com. Pulls weather.com, AccuWeather, NWS, ECMWF/GFS/GEM and the ECMWF+GEFS ensembles hourly, averages them with skill-based weights, and shows a ceremony-window verdict for the key day. Fork it: change `LOCATION`, `EVENT_DAYS`, `KEY_DAY` and `KEY_WINDOW` for your own event.
 
