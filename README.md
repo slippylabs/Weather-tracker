@@ -1,38 +1,89 @@
-# Wedding Weather Tracker
+# Weather Outlook
 
-Multi-source rain outlook for one weekend, built for phones, live at https://weather.mhpwebserver.com. Pulls weather.com, AccuWeather, NWS, ECMWF/GFS/GEM and the ECMWF+GEFS ensembles hourly, averages them with skill-based weights, and shows a ceremony-window verdict for the key day. Fork it: change `LOCATION`, `EVENT_DAYS`, `KEY_DAY` and `KEY_WINDOW` for your own event.
+Consensus weather forecast for **anywhere on Earth**, live at
+<https://weather.slippylabs.com>.
 
-Consensus rain outlook for one weekend, built for phones. Every hour `collect.py`
-pulls the Red Bank forecast from ten sources, averages the daily chance of rain
-(and the hourly chance where a source publishes it), and writes `data/latest.json`.
-`www/` is a static page that reads that file. There is no backend.
+Nine forecast sources are queried for the same point, normalised to one schema
+and averaged into a single daily chance of rain with a skill-based weight. The
+page shows the average *and* the spread between the sources, because the
+spread is the part that tells you whether the number means anything: a short
+band means they agree, a wide one means nobody knows yet.
+
+Optionally, pick a day and a window of hours — "the ceremony", "kickoff" — and
+that day gets read against the window instead of the whole day, with a verdict
+and a per-factor breakdown of rain, wind, humidity and temperature.
 
 ## Sources
+
 | id | Source | How | Reach |
 |---|---|---|---|
-| twc | The Weather Channel (weather.com; same engine as Wunderground) | `api.weather.com` v3 with the public key embedded in wunderground.com | 15 days daily + hourly |
-| accuweather | AccuWeather | server-rendered daily page + hourly pages, fetched with `curl_cffi` (Chrome TLS fingerprint — plain curl gets an Akamai 403) | 15 days daily, 4 days hourly |
-| ecmwf_ens / gefs | ECMWF ensemble (51 runs), GEFS ensemble (31 runs) | Open-Meteo ensemble API; rain % = share of members with ≥0.254 mm over 6am–8pm (hourly: ≥0.05 mm/h, because 6-hourly blocks are spread evenly across hours past ~day 6); temps = member mean | 16 days (GEFS needs `gfs_seamless`; `gfs025` is None past 10 days) |
-| nws | National Weather Service | `api.weather.gov` gridpoints PHI | 7 days daily + hourly |
-| ecmwf / gfs / gem | ECMWF, GFS, GEM (no best_match blend — it resolves to GFS here and double-counted it; daily rain % is the daytime-window max, not the 24 h max) | Open-Meteo `models=` | 16 days (GEM temps 10 days; ECMWF queried at lon -74.15 because its cell at -74.06 is ocean) |
+| twc | The Weather Channel (weather.com; same engine as Wunderground) | `api.weather.com` v3 with the public key embedded in wunderground.com | 15 days daily + hourly, global |
+| accuweather | AccuWeather | coordinate resolved through `web-api/three-day-redirect`, then the server-rendered daily and hourly pages, fetched with `curl_cffi` (Chrome TLS fingerprint — plain curl gets an Akamai 403) | 15 days daily, 4 days hourly, global |
+| ecmwf_ens / gefs | ECMWF ensemble (51 runs), GEFS ensemble (31 runs) | Open-Meteo ensemble API; rain % = share of members with ≥0.254 mm over the daytime window (hourly: ≥0.05 mm/h, because 6-hourly blocks are spread evenly across hours past ~day 6); temps = member mean | 16 days |
+| nws | National Weather Service | `api.weather.gov` gridpoints | 7 days daily + hourly, **United States only** |
+| ecmwf / gfs / gem | ECMWF, GFS, GEM (no best_match blend — it resolves to GFS in much of the world and double-counted it; daily rain % is the daytime-window max, not the 24 h max) | Open-Meteo `models=` | 16 days |
 | metno | MET Norway | `api.met.no` locationforecast | ~9 days, temperatures only |
 
-Each source also yields humidity, wind speed (mph) and direction: the source's own daily figure where it publishes one (TWC dayparts, NWS/AccuWeather wind text), otherwise the 6am–8pm average of its hourly data (`fill_daily_from_hourly`). Tiles show the cross-source average; direction is the most common compass point.
+A source that fails is recorded on its own entry (`ok: false`) and never blocks
+the run. That is also how a source with a limited footprint behaves outside it:
+NWS 404s abroad, so it simply drops out of the average and the page says
+"not available for this location".
 
-A source failing is recorded on its own entry (`ok: false`) and never blocks the run.
+Each source also yields humidity, wind speed (mph) and direction: the source's
+own daily figure where it publishes one, otherwise the daytime average of its
+hourly data (`fill_daily_from_hourly`).
+
+## Design notes
+
+**There is no module-level location.** Everything is a function of a `Loc`
+(name, lat, lon, IANA timezone). The timezone matters more than it looks:
+which calendar day an hour belongs to is a property of the place being
+forecast, so the parsers take an explicit `tz` and the Open-Meteo requests
+carry `timezone=<loc.tz>`. Reading it from the server would bucket a Tokyo
+forecast onto New York's days.
+
+**Sources are collected in parallel.** Nine sequential HTTP conversations took
+over twenty seconds, nearly all of it spent waiting. They are read back in
+source order, because the summary takes the first human-written condition
+phrase it finds and that ordering is what makes it weather.com's rather than a
+model's.
+
+**The API is a cache with a collector behind it**, not a collector with a cache
+in front. Fresh (<30 min) is served from disk; stale is served immediately
+*and* refreshed in the background; only a genuinely cold location waits. A
+per-location lock means two visitors opening the same city start one
+collection, not two.
+
+## Layout
+
+    collect.py   pure parsers + fetchers + geocoding; no Flask, no I/O beyond HTTP
+    app.py       Flask API: /api/geocode, /api/reverse, /api/forecast, /api/health
+    www/         static front end (Slippy Labs HUD theme)
+    deploy/      systemd unit + nginx vhost
+    tests/       parser tests against recorded fixtures
 
 ## Run / test
-    .venv/bin/python -m pytest -q tests     # parsers against fixtures in tests/fixtures
-    .venv/bin/python collect.py             # live collection → data/latest.json (+ data/history/)
-    cd www && python3 -m http.server 8799   # local preview (www/data → ../data symlink)
 
-## Deploy (this box)
-    sudo cp deploy/weather.mhpwebserver.com.conf /etc/nginx/sites-available/ && sudo ln -s ../sites-available/weather.mhpwebserver.com.conf /etc/nginx/sites-enabled/
-    sudo cp deploy/weather-collect.{service,timer} /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now weather-collect.timer
+    .venv/bin/python -m pytest -q tests        # parsers against tests/fixtures
+    .venv/bin/python collect.py "Boulder, CO"  # one-shot collection to stdout
+    .venv/bin/python app.py                    # dev server on 127.0.0.1:8028
+
+## Deploy
+
+    sudo cp deploy/weather.service /etc/systemd/system/
+    sudo systemctl daemon-reload && sudo systemctl enable --now weather.service
+    sudo cp deploy/weather.slippylabs.com.conf /etc/nginx/sites-available/
+    sudo ln -sf ../sites-available/weather.slippylabs.com.conf /etc/nginx/sites-enabled/
     sudo nginx -t && sudo systemctl reload nginx
 
-Hash links open a day expanded, e.g. `https://weather.mhpwebserver.com/#2026-09-06`.
+`ProtectSystem=strict` makes all of `/` read-only, so the unit grants exactly
+two writable paths: the forecast cache and gunicorn's control socket
+directory. The application code stays read-only to the service.
 
-## Headline weighting
+## Credits
 
-The tile headline is a **skill-weighted** mean, not a plain average (`source_weight()` in `collect.py`; the plain average is kept as `pop_plain`). Weights by lead time: ECMWF ensemble ×2, GEFS ×1.5, NWS ×1.5 (×2 inside 3 days), weather.com ×1.5, ECMWF/GFS ×1, GEM ×0.75, AccuWeather ×1 inside a week and ×0.5 beyond. The same weights apply to the hourly bars and the ceremony verdict. The min–max band is still the raw per-source range.
+Forked from [mattpetosa/wedding-weather-tracker](https://github.com/mattpetosa/wedding-weather-tracker),
+which did this for one weekend in Red Bank, NJ. The multi-source averaging,
+the skill weights and the parsers are its work; this fork generalised it to any
+location, put a cached API in front of it and re-themed the front end. MIT,
+same as upstream.

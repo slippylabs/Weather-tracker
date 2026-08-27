@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Red Bank, NJ multi-source forecast collector for weather.mhpwebserver.com.
+"""Multi-source forecast collector for weather.slippylabs.com.
 
-Fetches every reachable forecast source, normalises them to one schema,
-averages them per day (and per hour), and writes data/latest.json for the
-static front end. Each source is isolated: a failure is recorded on that
-source's entry and never aborts the run.
+Given any point on Earth, fetches every reachable forecast source, normalises
+them to one schema, and averages them per day (and per hour) with a
+skill-based weight. Each source is isolated: a failure is recorded on that
+source's entry and never aborts the run — which is also how sources with a
+limited footprint (NWS is US-only) drop out of the average abroad.
+
+Everything here is a pure function of a `Loc`; there is no module-level
+location. The parsers below take an explicit `tz` because a forecast's local
+calendar day is a property of the place being forecast, not of this server.
 
 Normalised per-source shape:
   daily:  {"YYYY-MM-DD": {"pop": int|None, "hi": int|None, "lo": int|None, "cond": str|None}}
@@ -14,6 +19,7 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import os
 import re
 import sys
@@ -21,26 +27,60 @@ import time
 import urllib.parse
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone, date as date_cls
 from zoneinfo import ZoneInfo
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(ROOT, "data")
-HISTORY_DIR = os.path.join(DATA_DIR, "history")
+# The default the pure parsers fall back to when no tz is passed. The fixture
+# suite is all Red Bank data, so this keeps those tests reading naturally; it
+# is never used by a real collection, which always has the location's own tz.
 TZ = ZoneInfo("America/New_York")
 
-LOCATION = {"name": "Red Bank, NJ", "lat": 40.347, "lon": -74.064}
-EVENT_DAYS = ["2026-09-05", "2026-09-06", "2026-09-07"]
-KEY_DAY = "2026-09-06"
+# Forecast horizon. 16 days is the ensembles' reach; the shorter-range sources
+# simply stop appearing past their own coverage, which the UI already shows.
+FORECAST_DAYS = 16
 
-UA_CONTACT = os.environ.get("WEATHER_UA_CONTACT", "wedding-weather-tracker (https://github.com/mattpetosa/wedding-weather-tracker)")
+
+@dataclass(frozen=True)
+class Loc:
+    """A place to forecast for. `tz` is an IANA name, not an offset."""
+    name: str
+    lat: float
+    lon: float
+    tz: str = "America/New_York"
+    country: str | None = None
+    admin1: str | None = None
+
+    @property
+    def zone(self):
+        try:
+            return ZoneInfo(self.tz)
+        except Exception:  # noqa: BLE001 — a bad tz must not sink the whole run
+            return timezone.utc
+
+    @property
+    def label(self):
+        return ", ".join(x for x in (self.name, self.admin1, self.country) if x)
+
+    def as_dict(self):
+        return {"name": self.name, "lat": self.lat, "lon": self.lon, "tz": self.tz,
+                "country": self.country, "admin1": self.admin1, "label": self.label}
+
+
+RED_BANK = Loc("Red Bank", 40.347, -74.064, "America/New_York", "United States", "New Jersey")
+
+UA_CONTACT = os.environ.get(
+    "WEATHER_UA_CONTACT",
+    "slippylabs-weather (https://weather.slippylabs.com; https://github.com/slippylabs/Weather-tracker)")
 BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 # Public key embedded in wunderground.com's own front end (TWC's consumer API).
 # Public consumer key that wunderground.com's own front end embeds (not a
 # secret; visible in any browser's network tab). Override with TWC_API_KEY.
 TWC_KEY = os.environ.get("TWC_API_KEY", "e1f10a1e78da46f5b10a1e78da96f525")
-ACCU_LOCATION_KEY = "339525"  # Red Bank, NJ 07701
+
+GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
 # ----------------------------------------------------------------------------
 # small helpers
@@ -103,14 +143,18 @@ def fill_daily_from_hourly(daily, hourly):
     return daily
 
 
-def _local_date_hour(iso: str):
-    """ISO timestamp (with offset or Z) -> (local 'YYYY-MM-DD', hour)."""
+def _local_date_hour(iso: str, tz=None):
+    """ISO timestamp (with offset or Z) -> (local 'YYYY-MM-DD', hour).
+
+    `tz` is the *forecast location's* zone, not the server's: which calendar
+    day an hour belongs to is a fact about the place, and getting it from the
+    server would bucket a Tokyo forecast onto New York's days."""
     s = iso.replace("Z", "+00:00")
     # TWC gives -0400 without the colon
     m = re.match(r"^(.*[+-]\d\d)(\d\d)$", s)
     if m and ":" not in s[-6:]:
         s = f"{m.group(1)}:{m.group(2)}"
-    dt = datetime.fromisoformat(s).astimezone(TZ)
+    dt = datetime.fromisoformat(s).astimezone(tz or TZ)
     return dt.strftime("%Y-%m-%d"), dt.hour
 
 
@@ -143,12 +187,12 @@ def http_json(url, headers=None):
 # parsers (pure; unit-tested against fixtures)
 # ----------------------------------------------------------------------------
 
-def parse_twc_daily(d):
+def parse_twc_daily(d, tz=None):
     daily = {}
     dp = d["daypart"][0]
     n = len(d["validTimeLocal"])
     for i in range(n):
-        date, _ = _local_date_hour(d["validTimeLocal"][i])
+        date, _ = _local_date_hour(d["validTimeLocal"][i], tz)
         day_i, night_i = 2 * i, 2 * i + 1
         pop = dp["precipChance"][day_i]
         cond = dp["wxPhraseLong"][day_i]
@@ -168,10 +212,10 @@ def parse_twc_daily(d):
     return daily
 
 
-def parse_twc_hourly(d):
+def parse_twc_hourly(d, tz=None):
     hourly = _hourly_dict()
     for i, ts in enumerate(d["validTimeLocal"]):
-        date, hour = _local_date_hour(ts)
+        date, hour = _local_date_hour(ts, tz)
         hourly[date][hour] = {"pop": _int(d["precipChance"][i]),
                               "temp": _int(d["temperature"][i]),
                               "hum": _int(d["relativeHumidity"][i]),
@@ -235,10 +279,10 @@ WMO_CODES = {0: "Sunny", 1: "Mostly Sunny", 2: "Partly Cloudy", 3: "Cloudy",
              99: "T-Storms w/ Hail"}
 
 
-def parse_nws_daily(d):
+def parse_nws_daily(d, tz=None):
     daily = {}
     for p in d["properties"]["periods"]:
-        date, _ = _local_date_hour(p["startTime"])
+        date, _ = _local_date_hour(p["startTime"], tz)
         pop = (p.get("probabilityOfPrecipitation") or {}).get("value")
         entry = daily.setdefault(date, {"pop": None, "hi": None, "lo": None, "cond": None,
                                         "hum": None, "wind": None, "wdir": None})
@@ -257,10 +301,10 @@ def parse_nws_daily(d):
     return daily
 
 
-def parse_nws_hourly(d):
+def parse_nws_hourly(d, tz=None):
     hourly = _hourly_dict()
     for p in d["properties"]["periods"]:
-        date, hour = _local_date_hour(p["startTime"])
+        date, hour = _local_date_hour(p["startTime"], tz)
         pop = (p.get("probabilityOfPrecipitation") or {}).get("value")
         wind, _ = _wind_from_text(p.get("windSpeed"))
         hourly[date][hour] = {"pop": _int(pop), "temp": _int(p["temperature"]),
@@ -269,7 +313,7 @@ def parse_nws_hourly(d):
     return hourly
 
 
-def parse_metno(d):
+def parse_metno(d, tz=None):
     """MET Norway publishes no precip probability — temperatures only.
     Hi/lo come from the next_6_hours max/min blocks (present for ~9 days;
     plain hourly points stop after ~2 days), so a day needs >=3 of its 4
@@ -278,7 +322,7 @@ def parse_metno(d):
     hourly = _hourly_dict()
     blocks = defaultdict(list)
     for ts in d["properties"]["timeseries"]:
-        date, hour = _local_date_hour(ts["time"])
+        date, hour = _local_date_hour(ts["time"], tz)
         data = ts["data"]
         inst = data["instant"]["details"]
         t = inst.get("air_temperature")
@@ -310,11 +354,11 @@ _ACCU_WIND = re.compile(r'Wind<span class="value">([^<]+)<')
 _ACCU_HUM = re.compile(r'Humidity<span class="value">\s*(\d+)%')
 
 
-def parse_accuweather_daily(page: str, year_hint: int | None = None):
+def parse_accuweather_daily(page: str, year_hint: int | None = None, tz=None):
     """Server-rendered 15-day cards. Year is inferred from the header
     'August 24 - September 7' range crossing Dec->Jan if needed."""
     daily = {}
-    year = year_hint or datetime.now(TZ).year
+    year = year_hint or datetime.now(tz or TZ).year
     prev_month = None
     cards = list(_ACCU_CARD.finditer(page))
     for i, m in enumerate(cards):
@@ -354,12 +398,12 @@ _ACCU_HOUR = re.compile(
 _ACCU_HTEMP = re.compile(r'class="temp[^"]*">\s*(-?\d+)')
 
 
-def parse_accuweather_hourly(page: str):
+def parse_accuweather_hourly(page: str, tz=None):
     hourly = _hourly_dict()
     for m in _ACCU_HOUR.finditer(page):
         epoch = int(m.group(1))
         body = m.group(2)
-        dt = datetime.fromtimestamp(epoch, tz=timezone.utc).astimezone(TZ)
+        dt = datetime.fromtimestamp(epoch, tz=timezone.utc).astimezone(tz or TZ)
         pop = _ACCU_POP.search(body)
         temp = _ACCU_HTEMP.search(body)
         hm = _ACCU_HUM.search(body)
@@ -434,66 +478,95 @@ def parse_ensemble(d):
 # fetchers — each returns (daily, hourly)
 # ----------------------------------------------------------------------------
 
-def fetch_twc():
+def fetch_twc(loc):
     base = "https://api.weather.com/v3/wx/forecast/{}?geocode={},{}&format=json&units=e&language=en-US&apiKey={}"
     hdr = {"User-Agent": BROWSER_UA}
-    d = http_json(base.format("daily/15day", LOCATION["lat"], LOCATION["lon"], TWC_KEY), hdr)
-    h = http_json(base.format("hourly/15day", LOCATION["lat"], LOCATION["lon"], TWC_KEY), hdr)
-    return parse_twc_daily(d), parse_twc_hourly(h)
+    tz = loc.zone
+    d = http_json(base.format("daily/15day", loc.lat, loc.lon, TWC_KEY), hdr)
+    h = http_json(base.format("hourly/15day", loc.lat, loc.lon, TWC_KEY), hdr)
+    return parse_twc_daily(d, tz), parse_twc_hourly(h, tz)
 
 
-def fetch_openmeteo(model, lon=None):
-    """lon override: ECMWF's 0.25° cell containing Red Bank (40.25,-74.0) is
-    open Atlantic, so it returns sea-surface-flat temps (70-73° all day).
-    Nudging to -74.15 lands in the 40.25,-74.25 cell ~10 mi inland."""
-    def _f():
+def fetch_openmeteo(model):
+    """Note there is no longitude override any more. The original had one to
+    nudge ECMWF off a cell that is open Atlantic at Red Bank; that is a
+    property of one location, not a rule, and for an arbitrary point the
+    honest thing is to show what the model says. A model sitting on a sea
+    cell shows up as an outlier in the min-max band."""
+    def _f(loc):
         q = urllib.parse.urlencode({
-            "latitude": LOCATION["lat"], "longitude": lon or LOCATION["lon"],
+            "latitude": loc.lat, "longitude": loc.lon,
             "daily": "precipitation_probability_max,temperature_2m_max,temperature_2m_min,weather_code",
             "hourly": "precipitation_probability,temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m",
-            "forecast_days": 16, "timezone": "America/New_York",
+            "forecast_days": FORECAST_DAYS, "timezone": loc.tz,
             "temperature_unit": "fahrenheit", "wind_speed_unit": "mph", "models": model})
+        # Open-Meteo returns its `time` arrays already in the requested zone,
+        # so parse_openmeteo can slice the ISO string and needs no tz itself.
         return parse_openmeteo(http_json("https://api.open-meteo.com/v1/forecast?" + q))
     return _f
 
 
-def fetch_ensemble(model, lon=None):
-    def _f():
+def fetch_ensemble(model):
+    def _f(loc):
         q = urllib.parse.urlencode({
-            "latitude": LOCATION["lat"], "longitude": lon or LOCATION["lon"],
-            "hourly": "precipitation,temperature_2m,relative_humidity_2m,wind_speed_10m", "forecast_days": 16,
-            "timezone": "America/New_York", "temperature_unit": "fahrenheit",
+            "latitude": loc.lat, "longitude": loc.lon,
+            "hourly": "precipitation,temperature_2m,relative_humidity_2m,wind_speed_10m",
+            "forecast_days": FORECAST_DAYS,
+            "timezone": loc.tz, "temperature_unit": "fahrenheit",
             "wind_speed_unit": "mph", "models": model})
         return parse_ensemble(http_json("https://ensemble-api.open-meteo.com/v1/ensemble?" + q))
     return _f
 
 
-def fetch_nws():
-    pts = http_json(f"https://api.weather.gov/points/{LOCATION['lat']},{LOCATION['lon']}")["properties"]
+def fetch_nws(loc):
+    """US-only. Outside its footprint api.weather.gov returns 404, which the
+    caller records as an unavailable source — that is the intended behaviour
+    abroad, not an error to handle here."""
+    pts = http_json(f"https://api.weather.gov/points/{loc.lat},{loc.lon}")["properties"]
     d = http_json(pts["forecast"])
     h = http_json(pts["forecastHourly"])
-    return parse_nws_daily(d), parse_nws_hourly(h)
+    tz = loc.zone
+    return parse_nws_daily(d, tz), parse_nws_hourly(h, tz)
 
 
-def fetch_metno():
-    d = http_json(f"https://api.met.no/weatherapi/locationforecast/2.0/complete?lat={LOCATION['lat']}&lon={LOCATION['lon']}")
-    return parse_metno(d)
+def fetch_metno(loc):
+    d = http_json(f"https://api.met.no/weatherapi/locationforecast/2.0/complete?lat={loc.lat}&lon={loc.lon}")
+    return parse_metno(d, loc.zone)
 
 
-def fetch_accuweather():
+# AccuWeather publishes no free lookup that returns the numeric location key
+# its forecast URLs need — the autocomplete endpoint now hands back only
+# "GEO_..." radar keys. This redirect endpoint does resolve a coordinate to
+# the real city page, and its Location header carries both the URL stem and
+# the key. Verified against US and non-US points.
+_ACCU_REDIRECT = re.compile(r"^(/[^?]*?)/(?:weather|daily-weather)-forecast/(\d+)")
+
+
+def resolve_accu(loc, session):
+    r = session.get(
+        f"https://www.accuweather.com/web-api/three-day-redirect?lat={loc.lat}&lon={loc.lon}",
+        timeout=30, allow_redirects=False)
+    m = _ACCU_REDIRECT.match(r.headers.get("location") or "")
+    if not m:
+        raise ValueError(f"could not resolve an AccuWeather location (HTTP {r.status_code})")
+    return m.group(1), m.group(2)
+
+
+def fetch_accuweather(loc):
     # Akamai rejects curl/urllib TLS fingerprints; curl_cffi impersonates Chrome.
     from curl_cffi import requests as cffi_requests
     s = cffi_requests.Session(impersonate="chrome")
-    base = f"https://www.accuweather.com/en/us/red-bank/07701"
-    r = s.get(f"{base}/daily-weather-forecast/{ACCU_LOCATION_KEY}", timeout=30)
+    tz = loc.zone
+    base, key = resolve_accu(loc, s)
+    r = s.get(f"https://www.accuweather.com{base}/daily-weather-forecast/{key}", timeout=30)
     r.raise_for_status()
-    daily = parse_accuweather_daily(r.text)
+    daily = parse_accuweather_daily(r.text, tz=tz)
     hourly = _hourly_dict()
     for day in range(1, 5):  # AccuWeather only serves 4 days of hourly without premium
         try:
-            rh = s.get(f"{base}/hourly-weather-forecast/{ACCU_LOCATION_KEY}?day={day}", timeout=30)
+            rh = s.get(f"https://www.accuweather.com{base}/hourly-weather-forecast/{key}?day={day}", timeout=30)
             if rh.status_code == 200 and "Hourly Weather" in rh.text:
-                for date, hours in parse_accuweather_hourly(rh.text).items():
+                for date, hours in parse_accuweather_hourly(rh.text, tz=tz).items():
                     hourly[date].update(hours)
         except Exception:  # noqa: BLE001 — hourly is best-effort
             pass
@@ -507,40 +580,43 @@ def fetch_accuweather():
     return daily, hourly
 
 
-SOURCES = [
-    {"id": "twc", "name": "The Weather Channel", "short": "weather.com",
-     "url": "https://weather.com/weather/tenday/l/40.347,-74.064", "fetch": fetch_twc,
-     "note": "Same forecast engine behind Weather Underground"},
-    {"id": "accuweather", "name": "AccuWeather", "short": "AccuWeather",
-     "url": "https://www.accuweather.com/en/us/red-bank/07701/daily-weather-forecast/339525",
-     "fetch": fetch_accuweather, "note": "Hourly detail only within 4 days"},
-    {"id": "nws", "name": "National Weather Service", "short": "NWS / NOAA",
-     "url": "https://forecast.weather.gov/MapClick.php?lat=40.347&lon=-74.064", "fetch": fetch_nws,
-     "note": "7-day forecast — appears once the day is within a week"},
-    {"id": "ecmwf_ens", "name": "ECMWF ensemble (51 runs)", "short": "ECMWF ENS",
-     "url": "https://open-meteo.com/en/docs/ensemble-api", "fetch": fetch_ensemble("ecmwf_ifs025", lon=-74.15),
-     "note": "Share of 51 model runs that produce measurable daytime rain"},
-    {"id": "gefs", "name": "GEFS ensemble (31 runs)", "short": "GEFS",
-     "url": "https://open-meteo.com/en/docs/ensemble-api", "fetch": fetch_ensemble("gfs_seamless"),
-     "note": "Share of 31 NOAA model runs that produce measurable daytime rain"},
-    {"id": "ecmwf", "name": "ECMWF (European model)", "short": "ECMWF",
-     "url": "https://open-meteo.com/", "fetch": fetch_openmeteo("ecmwf_ifs025", lon=-74.15),
-     "note": "via Open-Meteo, nearest land grid cell"},
-    {"id": "gfs", "name": "GFS (NOAA global model)", "short": "GFS",
-     "url": "https://open-meteo.com/", "fetch": fetch_openmeteo("gfs_seamless"), "note": "via Open-Meteo"},
-    # No "best_match" blend row: for this location it resolves to GFS and was
-    # a byte-identical duplicate, double-weighting GFS in every average.
-    {"id": "gem", "name": "GEM (Environment Canada)", "short": "GEM",
-     "url": "https://open-meteo.com/", "fetch": fetch_openmeteo("gem_seamless"), "note": "via Open-Meteo"},
-    {"id": "metno", "name": "MET Norway (yr.no)", "short": "yr.no",
-     "url": "https://www.yr.no/", "fetch": fetch_metno, "note": "Temperatures only — publishes no rain probability"},
-]
+def build_sources(loc):
+    """The source list for one place. `url` is the human-facing page a reader
+    can go check, so it has to be built per-location too."""
+    return [
+        {"id": "twc", "name": "The Weather Channel", "short": "weather.com",
+         "url": f"https://weather.com/weather/tenday/l/{loc.lat},{loc.lon}", "fetch": fetch_twc,
+         "note": "Same forecast engine behind Weather Underground"},
+        {"id": "accuweather", "name": "AccuWeather", "short": "AccuWeather",
+         "url": "https://www.accuweather.com/", "fetch": fetch_accuweather,
+         "note": "Hourly detail only within 4 days"},
+        {"id": "nws", "name": "National Weather Service", "short": "NWS / NOAA",
+         "url": f"https://forecast.weather.gov/MapClick.php?lat={loc.lat}&lon={loc.lon}", "fetch": fetch_nws,
+         "note": "United States only — 7-day forecast"},
+        {"id": "ecmwf_ens", "name": "ECMWF ensemble (51 runs)", "short": "ECMWF ENS",
+         "url": "https://open-meteo.com/en/docs/ensemble-api", "fetch": fetch_ensemble("ecmwf_ifs025"),
+         "note": "Share of 51 model runs that produce measurable daytime rain"},
+        {"id": "gefs", "name": "GEFS ensemble (31 runs)", "short": "GEFS",
+         "url": "https://open-meteo.com/en/docs/ensemble-api", "fetch": fetch_ensemble("gfs_seamless"),
+         "note": "Share of 31 NOAA model runs that produce measurable daytime rain"},
+        {"id": "ecmwf", "name": "ECMWF (European model)", "short": "ECMWF",
+         "url": "https://open-meteo.com/", "fetch": fetch_openmeteo("ecmwf_ifs025"),
+         "note": "via Open-Meteo, nearest grid cell"},
+        {"id": "gfs", "name": "GFS (NOAA global model)", "short": "GFS",
+         "url": "https://open-meteo.com/", "fetch": fetch_openmeteo("gfs_seamless"), "note": "via Open-Meteo"},
+        # No "best_match" blend row: it resolves to GFS in much of the world and
+        # was a byte-identical duplicate, double-weighting GFS in every average.
+        {"id": "gem", "name": "GEM (Environment Canada)", "short": "GEM",
+         "url": "https://open-meteo.com/", "fetch": fetch_openmeteo("gem_seamless"), "note": "via Open-Meteo"},
+        {"id": "metno", "name": "MET Norway (yr.no)", "short": "yr.no",
+         "url": "https://www.yr.no/", "fetch": fetch_metno,
+         "note": "Temperatures only — publishes no rain probability"},
+    ]
+
 
 # ----------------------------------------------------------------------------
 # sun times (NOAA solar equations; accurate to a minute or so)
 # ----------------------------------------------------------------------------
-import math
-
 
 def _sun_event_utc_hours(date, lat, lon, elev_deg, rising):
     """UTC decimal hour when the sun's centre is at elev_deg on `date`
@@ -566,12 +642,12 @@ def _sun_event_utc_hours(date, lat, lon, elev_deg, rising):
     return None
 
 
-def sun_times(date, lat=LOCATION["lat"], lon=LOCATION["lon"]):
+def sun_times(date, lat=RED_BANK.lat, lon=RED_BANK.lon, tz=None):
     def local(h):
         if h is None:
             return None
         base = datetime(*(int(x) for x in date.split("-")), tzinfo=timezone.utc)
-        return (base + timedelta(hours=h)).astimezone(TZ).strftime("%H:%M")
+        return (base + timedelta(hours=h)).astimezone(tz or TZ).strftime("%H:%M")
     return {
         "sunrise": local(_sun_event_utc_hours(date, lat, lon, -0.833, True)),
         "sunset": local(_sun_event_utc_hours(date, lat, lon, -0.833, False)),
@@ -625,8 +701,16 @@ def source_weight(source_id, lead_days):
     return 1.0
 
 
-def summarise(sources, days=EVENT_DAYS, today=None):
-    today_d = date_cls.fromisoformat(today) if today else datetime.now(TZ).date()
+def forecast_days(loc, n=FORECAST_DAYS, today=None):
+    """The next `n` calendar days in the location's own zone, starting today
+    there — which is not necessarily today here."""
+    start = date_cls.fromisoformat(today) if today else datetime.now(loc.zone).date()
+    return [(start + timedelta(days=i)).isoformat() for i in range(n)]
+
+
+def summarise(sources, days, today=None, loc=RED_BANK):
+    tz = loc.zone
+    today_d = date_cls.fromisoformat(today) if today else datetime.now(tz).date()
     summary = {}
     for date in days:
         lead = (date_cls.fromisoformat(date) - today_d).days
@@ -677,18 +761,29 @@ def summarise(sources, days=EVENT_DAYS, today=None):
             "cond": conds[0] if conds else None,
             "hourly": hourly,
             "hourly_available": any(x["n"] for x in hourly),
-            "sun": sun_times(date),
+            "sun": sun_times(date, loc.lat, loc.lon, tz),
         }
     return summary
 
 
-def collect(sources=SOURCES, days=EVENT_DAYS, verbose=True):
-    out_sources = []
-    for src in sources:
+def collect(loc, days=None, verbose=False, max_workers=9):
+    """Fetch every source for `loc` and summarise them.
+
+    Sources are fetched in parallel: nine sequential HTTP conversations took
+    over twenty seconds, most of it spent waiting, and AccuWeather alone is
+    ~10s because it walks four hourly pages with a courtesy pause between
+    them. Results are read back in source order, because `summarise` takes
+    the first human-written condition phrase it finds and that ordering is
+    what makes it weather.com's rather than a model's.
+    """
+    days = days or forecast_days(loc)
+    sources = build_sources(loc)
+
+    def _one(src):
         entry = {k: src[k] for k in ("id", "name", "short", "url", "note")}
         t0 = time.time()
         try:
-            daily, hourly = src["fetch"]()
+            daily, hourly = src["fetch"](loc)
             fill_daily_from_hourly(daily, hourly)
             entry.update({
                 "ok": True, "error": None,
@@ -702,62 +797,104 @@ def collect(sources=SOURCES, days=EVENT_DAYS, verbose=True):
                           "daily": {}, "hourly": {}, "coverage": None})
         entry["fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         entry["elapsed_s"] = round(time.time() - t0, 1)
-        if verbose:
+        return entry
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        out_sources = list(pool.map(_one, sources))
+
+    if verbose:
+        for entry in out_sources:
             status = "ok " if entry["ok"] else "ERR"
-            got = ", ".join(f"{d[5:]}={entry['daily'][d]['pop']}%" for d in days if d in entry["daily"]) or "no event days yet"
-            print(f"[{status}] {src['name']:<28} {entry['elapsed_s']:>5}s  {entry['error'] or got}")
-        out_sources.append(entry)
+            got = ", ".join(f"{d[5:]}={entry['daily'][d]['pop']}%" for d in days[:3] if d in entry["daily"]) or "no days"
+            print(f"[{status}] {entry['name']:<28} {entry['elapsed_s']:>5}s  {entry['error'] or got}")
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "location": LOCATION,
+        "location": loc.as_dict(),
         "days": days,
-        "key_day": KEY_DAY,
         "sources": out_sources,
-        "summary": summarise(out_sources, days),
+        "summary": summarise(out_sources, days, loc=loc),
     }
 
 
-# How many snapshots of history ride along in latest.json. Nothing in www/
-# reads `trend` today; it is kept because it is the only record of how the
-# forecast moved, and dropping it would quietly discard that.
-TREND_POINTS = 400
+# ----------------------------------------------------------------------------
+# geocoding
+# ----------------------------------------------------------------------------
+
+def _loc_from_geo(r):
+    return Loc(name=r.get("name") or "Unknown",
+               lat=round(float(r["latitude"]), 4), lon=round(float(r["longitude"]), 4),
+               tz=r.get("timezone") or "UTC",
+               country=r.get("country"), admin1=r.get("admin1"))
 
 
-def write(result):
-    os.makedirs(HISTORY_DIR, exist_ok=True)
-    stamp = datetime.now(TZ).strftime("%Y%m%d-%H%M")
-    with open(os.path.join(HISTORY_DIR, f"{stamp}.json"), "w") as f:
-        json.dump(result, f, separators=(",", ":"))
-    # trend: one point per snapshot, tiny enough to ship to the browser.
-    # Only the newest TREND_POINTS files are opened. This used to read and
-    # parse every file in the history directory on every run and then throw
-    # all but the last 400 away — one snapshot an hour means the discarded
-    # work grows without limit while the answer never changes. History file
-    # names are the sortable stamp `YYYYMMDD-HHMM`, so the tail of the
-    # sorted listing is exactly the newest ones.
-    trend = []
-    for name in sorted(os.listdir(HISTORY_DIR))[-TREND_POINTS:]:
-        try:
-            with open(os.path.join(HISTORY_DIR, name)) as f:
-                snap = json.load(f)
-            trend.append({"at": snap["generated_at"],
-                          "pop": {d: snap["summary"][d]["pop"] for d in snap["days"]}})
-        except Exception:  # noqa: BLE001
-            continue
-    result["trend"] = trend
-    tmp = os.path.join(DATA_DIR, "latest.json.tmp")
-    with open(tmp, "w") as f:
-        json.dump(result, f, separators=(",", ":"))
-    os.replace(tmp, os.path.join(DATA_DIR, "latest.json"))
+def geocode(query, count=8):
+    """Place name -> [Loc]. Open-Meteo's geocoder needs no key and, crucially,
+    returns each result's IANA timezone, which is the other thing a forecast
+    for an arbitrary point needs and cannot be guessed from coordinates."""
+    q = urllib.parse.urlencode({"name": query, "count": count, "language": "en", "format": "json"})
+    d = http_json(f"{GEOCODE_URL}?{q}")
+    return [_loc_from_geo(r) for r in (d.get("results") or [])]
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(min(1.0, math.sqrt(a)))
+
+
+def reverse_geocode(lat, lon):
+    """Coordinate -> a named Loc, for the "use my location" path.
+
+    The timezone comes from Open-Meteo, which is authoritative and the one
+    part that must be right. The name is a nicety, so it is best-effort:
+    BigDataCloud names the spot, then that name is run back through the same
+    Open-Meteo geocoder the search box uses and accepted only if it resolves
+    within 75 km. Going back through Open-Meteo is what keeps a label
+    consistent between the two ways into the page — BigDataCloud alone
+    returns full ISO country names ("United Kingdom of Great Britain and
+    Northern Ireland (the)") that match nothing the search box ever shows.
+    """
+    q = urllib.parse.urlencode({"latitude": lat, "longitude": lon, "timezone": "auto",
+                                "forecast_days": 1})
+    tz = (http_json(f"https://api.open-meteo.com/v1/forecast?{q}") or {}).get("timezone") or "UTC"
+    fallback = Loc(name=f"{lat:.3f}, {lon:.3f}", lat=round(float(lat), 4),
+                   lon=round(float(lon), 4), tz=tz)
+    try:
+        q = urllib.parse.urlencode({"latitude": lat, "longitude": lon, "localityLanguage": "en"})
+        d = http_json(f"https://api.bigdatacloud.net/data/reverse-geocode-client?{q}")
+        name = d.get("city") or d.get("locality") or d.get("principalSubdivision")
+        if not name:
+            return fallback
+        near = [h for h in geocode(name, count=5)
+                if _haversine_km(lat, lon, h.lat, h.lon) <= 75]
+        if near:
+            best = min(near, key=lambda h: _haversine_km(lat, lon, h.lat, h.lon))
+            # Keep the caller's own coordinates and Open-Meteo's tz for them;
+            # only the naming is borrowed from the matched place.
+            return Loc(name=best.name, lat=round(float(lat), 4), lon=round(float(lon), 4),
+                       tz=tz, country=best.country, admin1=best.admin1)
+        return Loc(name=name, lat=round(float(lat), 4), lon=round(float(lon), 4), tz=tz,
+                   country=d.get("countryCode"), admin1=d.get("principalSubdivision"))
+    except Exception:  # noqa: BLE001 — a name is a nicety; the tz above is not
+        return fallback
 
 
 if __name__ == "__main__":
-    res = collect()
-    write(res)
+    where = " ".join(sys.argv[1:]) or "Red Bank, NJ"
+    hits = geocode(where, count=1)
+    if not hits:
+        print(f"no such place: {where}")
+        sys.exit(2)
+    loc = hits[0]
+    print(f"{loc.label}  ({loc.lat}, {loc.lon}, {loc.tz})\n")
+    res = collect(loc, verbose=True)
     ok = sum(1 for s in res["sources"] if s["ok"])
     print(f"\n{ok}/{len(res['sources'])} sources ok. Summary:")
-    for d in res["days"]:
+    for d in res["days"][:7]:
         s = res["summary"][d]
-        print(f"  {d}: rain {s['pop']}% (n={s['pop_n']}, {s['pop_min']}–{s['pop_max']})  {s['lo']}–{s['hi']}°F  "
-              f"hum {s['hum']}% (n={s['hum_n']})  wind {s['wind']} mph {s['wdir'] or ''} (n={s['wind_n']})  {s['cond']}")
+        print(f"  {d}: rain {s['pop']}% (n={s['pop_n']}, {s['pop_min']}-{s['pop_max']})  "
+              f"{s['lo']}-{s['hi']}F  hum {s['hum']}%  wind {s['wind']} mph {s['wdir'] or ''}  {s['cond']}")
     sys.exit(0 if ok else 1)

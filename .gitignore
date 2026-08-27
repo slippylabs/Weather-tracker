@@ -1,6 +1,4 @@
 .venv/
+venv/
 __pycache__/
-data/history/
-data/latest.json
-data/latest.json.tmp
-www/data
+cache/

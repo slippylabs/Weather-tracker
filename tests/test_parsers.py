@@ -3,6 +3,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import collect as c
 
 FX = os.path.join(os.path.dirname(__file__), "fixtures")
+
+# The fixtures are a frozen Red Bank capture covering this weekend. These used
+# to be collect.EVENT_DAYS; they are a property of the recorded data, not of
+# the code, which no longer has a fixed location or a fixed set of days.
+EVENT_DAYS = ["2026-09-05", "2026-09-06", "2026-09-07"]
 def fx(name):
     with open(os.path.join(FX, name)) as f:
         return json.load(f) if name.endswith(".json") else f.read()
@@ -16,7 +21,7 @@ def _valid_day(d):
 def test_twc_daily_covers_event_days_with_values():
     d = c.parse_twc_daily(fx("twc_daily.json"))
     assert len(d) == 15
-    for day in c.EVENT_DAYS:
+    for day in EVENT_DAYS:
         assert day in d
         _valid_day(d[day])
         assert d[day]["pop"] is not None and d[day]["hi"] > d[day]["lo"]
@@ -60,7 +65,7 @@ def test_accuweather_daily_cards():
     assert len(d) == 15
     assert d["2026-08-24"] == {"pop": 25, "hi": 81, "lo": 62, "cond": "Partly sunny", "hum": None, "wind": 7, "wdir": "SW"}
     assert d["2026-08-25"]["pop"] == 3
-    for day in c.EVENT_DAYS:
+    for day in EVENT_DAYS:
         assert day in d and d[day]["pop"] is not None, day
 
 def test_accuweather_year_rollover():
@@ -102,7 +107,7 @@ def test_ensemble_probability_is_member_share():
     idx = [i for i, t in enumerate(h6["time"]) if t.startswith("2026-09-06")]
     member_max = max(h6[k][i] for k in h6 if k.startswith("temperature") for i in idx)
     assert d["2026-09-06"]["hi"] < member_max
-    for day in c.EVENT_DAYS:
+    for day in EVENT_DAYS:
         assert day in d and 0 <= d[day]["pop"] <= 100
         assert d[day]["hi"] > d[day]["lo"]
     assert len(h["2026-09-06"]) == 24
@@ -258,7 +263,7 @@ def test_openmeteo_daily_pop_is_daytime_window_not_24h_max():
 def test_best_match_blend_is_not_a_source():
     """best_match resolves to GFS for this location, so listing it doubled
     GFS's weight in every average."""
-    assert "openmeteo" not in {s["id"] for s in c.SOURCES}
+    assert "openmeteo" not in {s["id"] for s in c.build_sources(c.RED_BANK)}
 
 
 def test_source_weight_by_lead_time():

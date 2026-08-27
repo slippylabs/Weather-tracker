@@ -1,0 +1,39 @@
+[Unit]
+Description=weather.slippylabs.com consensus forecast API (Flask/gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=weather
+Group=weather
+WorkingDirectory=/opt/weather
+Environment=PYTHONUNBUFFERED=1
+Environment=WEATHER_CACHE_DIR=/opt/weather/cache
+# Threads, not workers: a cold collection is nine concurrent HTTP waits, and
+# the forecast cache plus the per-location in-flight locks live in process
+# memory. A second worker would keep its own copy of both, so two visitors
+# could each start the same nine-source collection -- exactly what the lock
+# exists to prevent. --timeout 120 covers a cold collect on a slow upstream.
+ExecStart=/opt/weather/venv/bin/gunicorn \
+    --workers 1 \
+    --threads 8 \
+    --timeout 120 \
+    --bind 127.0.0.1:8028 \
+    app:app
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# ProtectSystem=strict makes all of / read-only; without this the forecast
+# cache silently fails to write and every request collects from cold.
+# Only these two are writable -- app.py/collect.py stay read-only to the
+# service. .gunicorn is where gunicorn 26 puts its control socket.
+ReadWritePaths=/opt/weather/cache
+ReadWritePaths=/opt/weather/.gunicorn
+
+[Install]
+WantedBy=multi-user.target

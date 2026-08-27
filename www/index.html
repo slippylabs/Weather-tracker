@@ -1,76 +1,209 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex">
-<title>Red Bank Weather Outlook · Sept 5–7</title>
-<meta name="theme-color" content="#E8EEF3">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="stylesheet" href="style.css?v=7">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Outlook // weather.slippylabs.com</title>
+<meta name="description" content="Consensus weather forecast for anywhere on Earth, averaged across nine sources including weather.com, AccuWeather, NWS and the ECMWF and GEFS ensembles.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://weather.slippylabs.com/">
+<meta property="og:title" content="Weather Outlook // weather.slippylabs.com">
+<meta property="og:description" content="Consensus weather forecast for anywhere on Earth, averaged across nine sources including weather.com, AccuWeather, NWS and the ECMWF and GEFS ensembles.">
+<meta property="og:image" content="https://weather.slippylabs.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Weather Outlook // weather.slippylabs.com">
+<meta name="twitter:description" content="Consensus weather forecast for anywhere on Earth, averaged across nine sources including weather.com, AccuWeather, NWS and the ECMWF and GEFS ensembles.">
+<meta name="twitter:image" content="https://weather.slippylabs.com/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234%22%20r%3D%2222%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#050b10">
+<link rel="stylesheet" href="style.css?v=1">
+<script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
+(function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
 </head>
 <body>
-<header class="masthead">
-  <p class="eyebrow">Red Bank, New Jersey</p>
-  <h1>Weather outlook<br><span>Sept 5 – 7</span></h1>
-  <p class="status" id="status">Loading forecasts…</p>
-</header>
 
-<main id="days" class="days" aria-live="polite"></main>
+<div class="starfield"></div>
+<div class="scanlines"></div>
 
-<section class="method">
-  <h2>How this number is made</h2>
-  <p>Every hour this page pulls the forecast for Red Bank from each source below and averages the daily chance of rain across whichever ones cover that day. The bar fills to the average; the faint band behind it shows the lowest and highest chance any single source gives, so a short band means the sources agree.</p>
-  <p>Tap a day to see the chance hour by hour (averaged across the sources that publish hourly detail) and every source's own number.</p>
-  <ul class="sources" id="sources"></ul>
-</section>
+<main class="page-wrap">
+  <div class="hud-panel wide">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
 
-<footer class="foot">
-  <p id="generated"></p>
-</footer>
+    <div class="callsign-row">
+      <div class="toad-avatar-wrap">
+        <svg class="toad-avatar" width="46" height="46" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="lock-reticle"></div>
+      </div>
+      <span class="callsign">Meteorological Division // Consensus</span>
+      <div class="nav-links">
+        <a href="https://projects.slippylabs.com/" class="logout-link">← Archive</a>
+      </div>
+    </div>
+
+    <h1>WEATHER OUTLOOK</h1>
+    <p class="subtitle">Nine forecast sources for anywhere on Earth, averaged into one number — and the spread between them, so you can see when they disagree.</p>
+
+    <!-- ---- location bar ---- -->
+    <div class="wx-locate">
+      <div class="wx-search-wrap">
+        <label class="tool-field-label" for="loc-search">Place</label>
+        <div class="wx-search-row">
+          <input class="tool-text-input wx-search-input" id="loc-search" type="search"
+                 placeholder="Search a town, city or airport…" autocomplete="off"
+                 role="combobox" aria-expanded="false" aria-controls="loc-results" aria-autocomplete="list">
+          <button class="tool-btn wx-geo-btn" id="geo-btn" type="button" title="Use my location">📍<span class="wx-geo-text"> My location</span></button>
+        </div>
+        <ul class="wx-results hidden" id="loc-results" role="listbox" aria-label="Search results"></ul>
+      </div>
+      <div class="wx-recents" id="recents" hidden></div>
+    </div>
+
+    <div class="wx-place-head" id="place-head" hidden>
+      <h2 class="wx-place" id="place-name"></h2>
+      <div class="wx-place-tools">
+        <div class="filter-bar wx-units" role="group" aria-label="Temperature units">
+          <button class="hud-tab active" id="unit-f" type="button" aria-pressed="true">&deg;F</button>
+          <button class="hud-tab" id="unit-c" type="button" aria-pressed="false">&deg;C</button>
+        </div>
+        <button class="tool-btn wx-plan-btn" id="plan-btn" type="button" aria-expanded="false">Plan an event</button>
+      </div>
+    </div>
+
+    <!-- ---- optional event planner ---- -->
+    <div class="wx-planner hidden" id="planner">
+      <p class="wx-planner-intro">Pick a day and the hours that matter. Every source gets read against that window instead of the whole day, and the day gets a verdict.</p>
+      <div class="wx-planner-row">
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="plan-date">Day</label>
+          <select class="tool-select" id="plan-date"></select>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="plan-from">From</label>
+          <select class="tool-select" id="plan-from"></select>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="plan-to">To</label>
+          <select class="tool-select" id="plan-to"></select>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="plan-label">Calling it</label>
+          <input class="tool-text-input" id="plan-label" type="text" maxlength="48" placeholder="Ceremony, kickoff, launch…">
+        </div>
+      </div>
+      <div class="wx-planner-actions">
+        <button class="tool-btn" id="plan-clear" type="button">Clear event</button>
+      </div>
+    </div>
+
+    <p class="wx-status" id="status">Search for a place to begin.</p>
+
+    <div class="wx-days" id="days" aria-live="polite"></div>
+
+    <div class="wx-method hidden" id="method">
+      <h2>How this number is made</h2>
+      <p id="method-copy"></p>
+      <p class="wx-method-note">Sources are not equally skilful, so they are not weighted equally: at a week or more out the ECMWF ensemble is the best estimate here and a single deterministic run is close to noise. The bar fills to the weighted average; the faint band behind it spans the lowest and highest figure any one source gives, so a short band means they agree.</p>
+      <ul class="wx-sources" id="sources"></ul>
+    </div>
+
+    <div class="comm-window">
+      <div class="comm-portrait">
+        <svg width="36" height="36" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="comm-body">
+        <div class="comm-label"><span class="dot"></span> Incoming Transmission &mdash; Slippy</div>
+        <p>"One forecast is an opinion. Nine of them arguing is information — watch the band, not just the number."</p>
+      </div>
+    </div>
+
+    <a href="https://projects.slippylabs.com/" class="hud-btn">← Back to Archive</a>
+  </div>
+</main>
 
 <template id="day-tpl">
-  <article class="day" tabindex="0" role="button" aria-expanded="false">
-    <div class="day-head">
-      <div class="when">
-        <span class="dow"></span>
-        <span class="date"></span>
+  <article class="wx-day" tabindex="0" role="button" aria-expanded="false">
+    <div class="wx-day-head">
+      <div class="wx-when">
+        <span class="wx-dow"></span>
+        <span class="wx-date"></span>
       </div>
-      <div class="temps"><span class="hi"></span><span class="lo"></span></div>
+      <div class="wx-temps"><span class="wx-hi"></span><span class="wx-lo"></span></div>
     </div>
-    <p class="cond"></p>
-    <dl class="vitals">
-      <div><dt>Humidity</dt><dd class="hum"></dd></div>
-      <div><dt>Wind</dt><dd class="wind"></dd></div>
+    <p class="wx-cond"></p>
+    <dl class="wx-vitals">
+      <div><dt>Humidity</dt><dd class="wx-hum"></dd></div>
+      <div><dt>Wind</dt><dd class="wx-wind"></dd></div>
     </dl>
-    <div class="pop-row">
-      <span class="pop-num"></span>
-      <span class="pop-label">chance of rain</span>
+    <div class="wx-pop-row">
+      <span class="wx-pop-num"></span>
+      <span class="wx-pop-label">chance of rain</span>
     </div>
-    <div class="bar" aria-hidden="true">
-      <span class="band"></span>
-      <span class="fill"></span>
-      <span class="tick"></span>
+    <div class="wx-bar" aria-hidden="true">
+      <span class="wx-band"></span>
+      <span class="wx-fill"></span>
+      <span class="wx-tick"></span>
     </div>
-    <p class="meta"></p>
-    <div class="verdict" hidden>
-      <p class="verdict-head"><span class="verdict-label"></span><span class="verdict-text"></span></p>
-      <ul class="factors"></ul>
-      <p class="sun" hidden></p>
+    <p class="wx-meta"></p>
+    <div class="wx-verdict" hidden>
+      <p class="wx-verdict-head"><span class="wx-verdict-label"></span><span class="wx-verdict-text"></span></p>
+      <ul class="wx-factors"></ul>
+      <p class="wx-sun" hidden></p>
     </div>
-    <div class="detail" hidden>
+    <div class="wx-detail" hidden>
       <h3>By the hour</h3>
-      <div class="hours"></div>
-      <div class="hour-axis"><span>12am</span><span>6am</span><span>noon</span><span>6pm</span><span>11pm</span></div>
+      <div class="wx-hours"></div>
+      <div class="wx-hour-axis"><span>12am</span><span>6am</span><span>noon</span><span>6pm</span><span>11pm</span></div>
       <h3>Each source</h3>
-      <ul class="per-source"></ul>
+      <ul class="wx-per-source"></ul>
     </div>
   </article>
 </template>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=1"></script>
+<!-- Slippy Deck: floating Slippy TV + jukebox player. Renders nothing unless admin.slippylabs.com/whoami confirms a signed-in account. -->
+<script defer src="https://slippylabs.com/deck/deck.js"></script>
+<!-- Slippy Labs sitewide privacy link. Self-contained on purpose: these sites
+     share no CSS, so it carries its own styles and inherits the page's text
+     colour instead of assuming a palette. position/z-index are load bearing --
+     the HUD theme's .starfield/.scanlines are fixed at z-index 0-1 and would
+     paint straight over an unpositioned footer.
+     The .page-wrap trim below is what keeps the bar on the first screen. -->
+<div class="sl-legal"><a href="https://slippylabs.com/privacy.html">Privacy</a></div>
+<style>
+.sl-legal{box-sizing:border-box;position:relative;z-index:3;height:64px;display:flex;align-items:center;justify-content:center;margin:0;padding:0 12px;font-family:"Consolas","SFMono-Regular",Menlo,Monaco,"Courier New",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+.sl-legal a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px}
+.sl-legal a:hover,.sl-legal a:focus-visible{text-decoration:underline;opacity:1}
+/* This page centres .page-wrap at min-height:100vh, which would push the bar a
+   whole screen below the fold. Give back exactly the bar height instead of
+   adding a scrollbar to a page that had none. */
+.page-wrap{min-height:calc(100vh - 64px)}
+</style>
 </body>
 </html>
