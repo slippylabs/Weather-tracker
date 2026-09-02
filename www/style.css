@@ -1739,3 +1739,13 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   .wx-hours { height: 52px; }
   .wx-hour-edge { top: -52px; }
 }
+
+/* One line telling a signed-in visitor their chosen place is stored against
+   their account. Stated on the page rather than only in the privacy policy. */
+.wx-account-note {
+  flex: 1 1 100%;
+  margin: 8px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}

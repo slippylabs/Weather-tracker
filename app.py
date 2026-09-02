@@ -41,6 +41,43 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 app = Flask(__name__)
 
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+# slippylabs.com's home page reads /api/now for its signed-in status strip, so
+# this API is now called from a different origin. The rule is the same suffix
+# check admin-console uses for /whoami: any https origin whose host is
+# slippylabs.com or ends in .slippylabs.com. Suffix matching is safe as written
+# -- "weather.slippylabs.com.evil.com" does not end in ".slippylabs.com", and
+# neither does "evilslippylabs.com"; a host with a port matches neither.
+#
+# Credentials are deliberately NOT allowed. This endpoint serves public
+# forecast data and knows nothing about accounts, so there is no reason to let
+# a page send cookies to it.
+def _cors_origin_allowed(origin):
+    origin = (origin or "").rstrip("/").lower()
+    if not origin.startswith("https://"):
+        return False
+    host = origin[len("https://"):]
+    if "/" in host or "@" in host:
+        return False
+    return host == "slippylabs.com" or host.endswith(".slippylabs.com")
+
+
+@app.after_request
+def _add_cors(resp):
+    origin = request.headers.get("Origin", "")
+    if _cors_origin_allowed(origin):
+        resp.headers["Access-Control-Allow-Origin"] = origin
+        resp.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Accept, Content-Type"
+        resp.headers["Access-Control-Max-Age"] = "600"
+    # Always, even when the origin was refused: caches key on this header, and
+    # omitting it lets one origin's answer be replayed to another.
+    resp.headers["Vary"] = "Origin"
+    return resp
+
 _locks: dict[str, threading.Lock] = {}
 _locks_guard = threading.Lock()
 _refreshing: set[str] = set()
@@ -234,6 +271,127 @@ def _served(payload, state):
     # decide freshness, and a cached response would hide a refresh that landed.
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+@app.route("/api/now", methods=["GET", "OPTIONS"])
+def api_now():
+    """The one-line version of /api/forecast, for the home-page strip.
+
+    /api/forecast returns all nine sources with their full hourly arrays --
+    hundreds of KB, and a cold location blocks for ~10s while nine upstreams
+    are fetched. Neither is acceptable on a page the user did not open for the
+    weather, so this projects the same cached payload down to what a strip can
+    show and, crucially, NEVER blocks: an uncached location starts the
+    collection in the background and answers 202 straight away, leaving the
+    caller to retry. It shares the cache, the lock and the collector with
+    /api/forecast, so it adds no upstream traffic of its own.
+    """
+    if request.method == "OPTIONS":
+        return app.make_response("")
+    try:
+        lat, lon = _float("lat", -90, 90), _float("lon", -180, 180)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    tz = (request.args.get("tz") or "UTC").strip()
+    if not _TZ_OK.match(tz):
+        tz = "UTC"
+    loc = c.Loc(name=(request.args.get("name") or f"{lat:.3f}, {lon:.3f}").strip()[:80],
+                lat=lat, lon=lon, tz=tz,
+                country=(request.args.get("country") or None),
+                admin1=(request.args.get("admin1") or None))
+    key = _key(lat, lon)
+
+    cached = _read(key)
+    if cached is None or _age(cached) >= STALE_MAX:
+        # Nothing usable. Start the work, tell the caller to come back.
+        if _cold_budget_ok():
+            _refresh_async(loc, key)
+        resp = jsonify({"pending": True, "name": loc.name})
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, 202
+
+    state = "fresh"
+    if _age(cached) >= TTL:
+        state = "stale"
+        _refresh_async(loc, key)
+
+    body = _now_from(cached, loc)
+    body["cache"] = {"state": state, "age_s": int(_age(cached))}
+    resp = jsonify(body)
+    # Same reasoning as /api/forecast: freshness is decided here, and a browser
+    # copy would hide a refresh that has already landed.
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def _now_from(payload, loc):
+    """Project a full cached forecast down to "what is it doing right now".
+
+    Temperature comes from the current hour of the consensus hourly array, not
+    from the daily high -- at 6am the day's high is not what it feels like
+    outside. The condition phrase is the day's headline, which is the finest
+    granularity any source gives us: only temperature and precipitation
+    probability are hourly, so there is no such thing as an hourly condition
+    here, and claiming one would be inventing data.
+    """
+    summary = payload.get("summary") or {}
+    now = c.datetime.now(c.ZoneInfo(loc.tz)) if _tz_ok(loc.tz) else c.datetime.now(c.timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    day = summary.get(today)
+    if day is None:
+        # Past midnight in a timezone whose forecast was collected yesterday.
+        future = sorted(k for k in summary if k >= today)
+        today = future[0] if future else (sorted(summary)[-1] if summary else None)
+        day = summary.get(today) if today else None
+    if day is None:
+        return {"pending": True, "name": loc.name}
+
+    temp = None
+    hourly = day.get("hourly") or []
+    for entry in hourly:
+        if entry.get("h") == now.hour:
+            temp = entry.get("temp")
+            break
+    if temp is None:                       # no hourly consensus for this hour
+        temp = day.get("hi")
+
+    is_day = _is_daylight(now, day.get("sun") or {})
+    cond = day.get("cond")
+    return {
+        "name": (payload.get("location") or {}).get("name") or loc.name,
+        "temp": temp,
+        "cond": cond,
+        "icon": c.cond_icon(cond, is_day),
+        "is_day": is_day,
+        "hi": day.get("hi"),
+        "lo": day.get("lo"),
+        "pop": day.get("pop"),
+        "date": today,
+        "as_of": now.strftime("%Y-%m-%dT%H:%M"),
+        "generated_at": payload.get("generated_at"),
+    }
+
+
+def _tz_ok(tz):
+    try:
+        c.ZoneInfo(tz)
+        return True
+    except Exception:  # noqa: BLE001 — an unknown zone just means fall back to UTC
+        return False
+
+
+def _is_daylight(now, sun):
+    """Between sunrise and sunset in the location's own local time.
+
+    Both are "HH:MM" strings already converted to that timezone by
+    collect.sun_times(). A polar day or night leaves one of them None, in which
+    case fall back to a plain hour test rather than guessing.
+    """
+    rise, set_ = sun.get("sunrise"), sun.get("sunset")
+    if not rise or not set_:
+        return 6 <= now.hour < 20
+    return rise <= now.strftime("%H:%M") < set_
 
 
 @app.get("/api/health")

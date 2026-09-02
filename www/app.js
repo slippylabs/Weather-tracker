@@ -11,6 +11,8 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const ADMIN_HOST = "https://admin.slippylabs.com";
+  const ACCOUNT_SLUG = "weather";
   const RECENTS_KEY = "slippy-weather-recents";
   const UNITS_KEY = "slippy-weather-units";
   const EVENT_KEY = "slippy-weather-event";
@@ -96,6 +98,60 @@
                    country: loc.country, admin1: loc.admin1, label: loc.label });
     try { localStorage.setItem(RECENTS_KEY, JSON.stringify(list.slice(0, MAX_RECENTS))); } catch (e) {}
     renderRecents();
+  }
+
+  /* ---------- the account's chosen place ----------
+     Signed-in visitors get their current place stored against their account,
+     which is the only way slippylabs.com's home-page strip can know where to
+     show weather for -- localStorage here is unreadable from that origin. It
+     is one place name and its coordinates, nothing else, and the page says so
+     rather than doing it silently. Signed-out visitors are untouched: recents
+     stay in this browser exactly as before. */
+
+  let accountUser = null;
+
+  async function initAccount() {
+    try {
+      const res = await fetch(`${ADMIN_HOST}/whoami`, {
+        credentials: "include", headers: { Accept: "application/json" },
+      });
+      const d = await res.json();
+      accountUser = d && d.authenticated ? d.username : null;
+    } catch (e) {
+      accountUser = null;   // admin console down: everything else still works
+    }
+    if (!accountUser) return;
+    showAccountNote();
+    // The page restores a place from the hash or from recents without waiting
+    // for this check, so by now select() may already have run and skipped the
+    // save. Catch that case up.
+    if (state.loc) saveAccountPlace(state.loc);
+  }
+
+  function showAccountNote() {
+    const el = $("#account-note");
+    if (!el) return;
+    el.textContent = "Signed in as " + accountUser +
+      " — this place is saved to your account so it shows on the Slippy Labs home page.";
+    el.hidden = false;
+  }
+
+  async function saveAccountPlace(loc) {
+    if (!accountUser || !loc) return;
+    try {
+      await fetch(`${ADMIN_HOST}/api/saves/${ACCOUNT_SLUG}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ save_data: {
+          v: 1,
+          updated: new Date().toISOString().slice(0, 16),
+          location: { name: loc.label || loc.name, lat: loc.lat, lon: loc.lon,
+                      tz: loc.tz || "UTC", country: loc.country || null,
+                      admin1: loc.admin1 || null },
+        } }),
+      });
+    } catch (e) { /* the forecast itself does not depend on this */ }
   }
 
   /* ---------- hash routing ---------- */
@@ -352,6 +408,7 @@
     $("#place-name").textContent = loc.label || loc.name;
     writeHash(null);
     rememberPlace(loc);
+    saveAccountPlace(loc);
     $("#days").textContent = "";
     $("#method").classList.add("hidden");
     setStatus("Querying nine forecast sources for " + (loc.name || "that spot") + "… this can take a few seconds the first time.");
@@ -636,6 +693,10 @@
   $("#plan-to").value = "18";
   setUnits(state.units);
   renderRecents();
+  // Not awaited: a forecast must never wait on the account check. If a place
+  // is restored before this resolves, initAccount() saves it once it knows who
+  // is signed in.
+  initAccount();
 
   const fromHash = readHash();
   if (fromHash) {

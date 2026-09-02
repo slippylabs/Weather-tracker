@@ -279,6 +279,66 @@ WMO_CODES = {0: "Sunny", 1: "Mostly Sunny", 2: "Partly Cloudy", 3: "Cloudy",
              99: "T-Storms w/ Hail"}
 
 
+# ----------------------------------------------------------------------------
+# condition -> icon
+# ----------------------------------------------------------------------------
+# `summary[date]["cond"]` is FREE TEXT, not a code. It is whichever human-written
+# phrase the highest-priority source supplied, so its vocabulary is the union of
+# four providers: the WMO_CODES labels above, NWS `shortForecast` (compositional
+# -- "Mostly Sunny then Slight Chance Rain Showers"), weather.com `wxPhraseLong`
+# ("AM Clouds/PM Sun"), and AccuWeather prose that matches no table at all
+# ("Hot with plenty of sun", "Sun breaking through clouds at times").
+#
+# So this is a keyword classifier in severity order, not a lookup. First match
+# wins, which is why the order matters: "Chance Rain Showers and Thunderstorms"
+# has to land on the thunderstorm, and "Snow and Rain" on the snow.
+
+_COND_RULES = [
+    # (icon_day, icon_night, keywords)  -- checked top to bottom.
+    ("⛈️", "⛈️", ("thunder", "t-storm", "tstorm", "storm", "squall")),
+    ("🧊", "🧊", ("freezing", "ice", "icy", "sleet", "hail")),
+    ("🌨️", "🌨️", ("snow", "flurr", "blizzard", "wintry")),
+    ("🌧️", "🌧️", ("rain", "shower", "drizzle", "downpour", "wet")),
+    ("🌫️", "🌫️", ("fog", "mist", "haze", "hazy", "smoke")),
+    ("💨", "💨", ("wind", "breezy", "blustery", "gale")),
+    # Cloud amount, most cloud first. Order is load bearing twice over:
+    # "mostly cloudy" must be tested before the bare "cloud" catch-all, and
+    # "mostly sunny" before "partly cloudy" so the two do not collapse into one
+    # icon -- more sun than cloud reads differently at a glance.
+    ("☁️", "☁️", ("overcast", "mostly cloudy", "considerable cloud")),
+    ("🌤️", "🌙", ("mostly sunny", "mostly clear", "few clouds",
+                                        "plenty of sun", "mainly sunny", "mainly clear")),
+    ("⛅", "☁️", ("partly cloudy", "partly sunny", "partly clear",
+                                "intervals of clouds", "clouds and sun", "sun and clouds",
+                                "breaking through clouds", "some clouds",
+                                "clouds/", "/pm sun", "am clouds")),
+    ("☁️", "☁️", ("cloud",)),
+    ("☀️", "🌙", ("sunny", "sunshine", "sun", "clear", "fair", "fine")),
+]
+_COND_FALLBACK = ("🌡️", "🌡️")
+
+
+def cond_icon(phrase, is_day=True):
+    """Emoji for a free-text condition phrase. Returns the thermometer only if
+    nothing at all matched, which the tests treat as a failure.
+
+    A compositional NWS phrase describes a whole day in order ("Mostly Sunny
+    then Slight Chance Rain Showers"); the headline is the FIRST clause, so
+    everything from " then " onward is dropped before matching. Splitting on
+    "/" is deliberately NOT done -- weather.com writes "AM Clouds/PM Sun" as a
+    single partly-cloudy idea, and it is matched as one.
+    """
+    if not phrase:
+        return _COND_FALLBACK[0 if is_day else 1]
+    text = str(phrase).lower()
+    head = text.split(" then ")[0].strip() or text
+    for day_icon, night_icon, keys in _COND_RULES:
+        for k in keys:
+            if k in head:
+                return day_icon if is_day else night_icon
+    return _COND_FALLBACK[0 if is_day else 1]
+
+
 def parse_nws_daily(d, tz=None):
     daily = {}
     for p in d["properties"]["periods"]:
