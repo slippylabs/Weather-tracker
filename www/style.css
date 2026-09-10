@@ -1220,6 +1220,9 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   .tool-file-input,
   .tool-color-input,
   .tool-text-input,
+  /* Number inputs render 42px from their own padding -- 2px short, and
+     they are the primary control on the calculator-shaped tools. */
+  .tool-number-input,
   .tip-quick-btn,
   .station-tune-btn,
   .mute-btn { min-height: 44px; }
