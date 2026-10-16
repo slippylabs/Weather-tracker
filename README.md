@@ -72,6 +72,7 @@ collection, not two.
 
     sudo cp deploy/weather.service /etc/systemd/system/
     sudo systemctl daemon-reload && sudo systemctl enable --now weather.service
+    sudo cp deploy/security-headers-geo.conf /etc/nginx/snippets/
     sudo cp deploy/weather.slippylabs.com.conf /etc/nginx/sites-available/
     sudo ln -sf ../sites-available/weather.slippylabs.com.conf /etc/nginx/sites-enabled/
     sudo nginx -t && sudo systemctl reload nginx
@@ -79,6 +80,14 @@ collection, not two.
 `ProtectSystem=strict` makes all of `/` read-only, so the unit grants exactly
 two writable paths: the forecast cache and gunicorn's control socket
 directory. The application code stays read-only to the service.
+
+The vhost includes `snippets/security-headers-geo.conf` instead of the
+estate-wide `security-headers.conf`: the shared one sends
+`Permissions-Policy: geolocation=()`, which makes the browser deny "Use my
+location" without ever prompting. The copy differs only in `geolocation=(self)`.
+
+Collector failures (a source erroring, a failed cold or background collection,
+a geocoder error) are logged to the journal: `journalctl -u weather`.
 
 ## Credits
 

@@ -15,6 +15,7 @@ the same city at once each start their own nine-source collection.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import threading
@@ -40,6 +41,19 @@ COLD_WINDOW = 300
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 app = Flask(__name__)
+
+# Collector failures go to stderr, which systemd puts in the journal
+# (journalctl -u weather). Under gunicorn, reuse its error handlers so the
+# lines share its format; standalone (tests, app.py) fall back to basicConfig.
+log = logging.getLogger("weather")
+_gerr = logging.getLogger("gunicorn.error")
+if _gerr.handlers:
+    log.handlers = _gerr.handlers
+    log.setLevel(logging.INFO)
+    log.propagate = False
+else:
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +147,13 @@ def _age(payload):
 
 
 def _collect_into_cache(loc, key):
+    t0 = time.time()
     payload = c.collect(loc)
+    srcs = payload.get("sources") or []
+    bad = [x["id"] for x in srcs if not x.get("ok")]
+    log.info("collected %s (%s) in %.1fs: %d/%d sources ok%s", key, loc.name,
+             time.time() - t0, len(srcs) - len(bad), len(srcs),
+             f", failed: {','.join(bad)}" if bad else "")
     payload["cached_at"] = time.time()
     _write(key, payload)
     return payload
@@ -151,7 +171,7 @@ def _refresh_async(loc, key):
             with _lock_for(key):
                 _collect_into_cache(loc, key)
         except Exception:  # noqa: BLE001 — the stale copy already went out
-            pass
+            log.exception("background refresh failed for %s", key)
         finally:
             with _locks_guard:
                 _refreshing.discard(key)
@@ -202,6 +222,7 @@ def api_geocode():
     try:
         hits = c.geocode(q, count=8)
     except Exception as e:  # noqa: BLE001
+        log.warning("geocode failed for %r: %s: %s", q, type(e).__name__, e)
         return jsonify({"error": f"lookup failed: {type(e).__name__}"}), 502
     return jsonify({"results": [h.as_dict() for h in hits]})
 
@@ -215,6 +236,7 @@ def api_reverse():
     try:
         return jsonify(c.reverse_geocode(lat, lon).as_dict())
     except Exception as e:  # noqa: BLE001
+        log.warning("reverse geocode failed for %.2f,%.2f: %s: %s", lat, lon, type(e).__name__, e)
         return jsonify({"error": f"lookup failed: {type(e).__name__}"}), 502
 
 
@@ -258,6 +280,7 @@ def api_forecast():
         try:
             return _served(_collect_into_cache(loc, key), "cold")
         except Exception as e:  # noqa: BLE001
+            log.exception("cold collection failed for %s", key)
             if cached:
                 return _served(cached, "stale")
             return jsonify({"error": f"collection failed: {type(e).__name__}"}), 502

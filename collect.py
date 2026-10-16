@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import math
 import os
 import re
@@ -81,6 +82,11 @@ BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 TWC_KEY = os.environ.get("TWC_API_KEY", "e1f10a1e78da46f5b10a1e78da96f525")
 
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+
+# Per-source failures are recorded in the payload (ok: false) for the page, but
+# that alone leaves no trace on the server -- a source that breaks for every
+# location (a changed AccuWeather page, a rotated TWC key) was invisible.
+log = logging.getLogger("weather.collect")
 
 # ----------------------------------------------------------------------------
 # small helpers
@@ -855,6 +861,9 @@ def collect(loc, days=None, verbose=False, max_workers=9):
         except Exception as e:  # noqa: BLE001 — one bad source must not kill the run
             entry.update({"ok": False, "error": f"{type(e).__name__}: {e}"[:200],
                           "daily": {}, "hourly": {}, "coverage": None})
+            log.warning("source %s failed for %.2f,%.2f after %.1fs: %s",
+                        src["id"], loc.lat, loc.lon, time.time() - t0,
+                        f"{type(e).__name__}: {e}"[:200])
         entry["fetched_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         entry["elapsed_s"] = round(time.time() - t0, 1)
         return entry
@@ -938,7 +947,9 @@ def reverse_geocode(lat, lon):
                        tz=tz, country=best.country, admin1=best.admin1)
         return Loc(name=name, lat=round(float(lat), 4), lon=round(float(lon), 4), tz=tz,
                    country=d.get("countryCode"), admin1=d.get("principalSubdivision"))
-    except Exception:  # noqa: BLE001 — a name is a nicety; the tz above is not
+    except Exception as e:  # noqa: BLE001 — a name is a nicety; the tz above is not
+        log.warning("reverse-geocode naming failed for %.2f,%.2f: %s: %s",
+                    lat, lon, type(e).__name__, e)
         return fallback
 
 
