@@ -18,6 +18,7 @@ Normalised per-source shape:
 from __future__ import annotations
 
 import html
+import functools
 import json
 import logging
 import math
@@ -914,6 +915,26 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return 2 * r * math.asin(min(1.0, math.sqrt(a)))
 
 
+@functools.lru_cache(maxsize=4096)
+def _tz_for_cell(lat2, lon2):
+    q = urllib.parse.urlencode({"latitude": lat2, "longitude": lon2, "timezone": "auto",
+                                "forecast_days": 1})
+    tz = (http_json(f"https://api.open-meteo.com/v1/forecast?{q}") or {}).get("timezone")
+    ZoneInfo(tz)  # raises on anything that is not a real IANA zone -> not cached
+    return tz
+
+
+def lookup_tz(lat, lon):
+    """IANA timezone for a point, from Open-Meteo (timezone=auto).
+
+    Cached per ~1 km cell; a failure raises and is not cached, so the next
+    caller retries. This is the server's own answer -- the forecast cache never
+    trusts a client-supplied tz, since one caller's tz would otherwise decide
+    which calendar day every later visitor's hours land on.
+    """
+    return _tz_for_cell(round(float(lat), 2), round(float(lon), 2))
+
+
 def reverse_geocode(lat, lon):
     """Coordinate -> a named Loc, for the "use my location" path.
 
@@ -926,9 +947,7 @@ def reverse_geocode(lat, lon):
     returns full ISO country names ("United Kingdom of Great Britain and
     Northern Ireland (the)") that match nothing the search box ever shows.
     """
-    q = urllib.parse.urlencode({"latitude": lat, "longitude": lon, "timezone": "auto",
-                                "forecast_days": 1})
-    tz = (http_json(f"https://api.open-meteo.com/v1/forecast?{q}") or {}).get("timezone") or "UTC"
+    tz = lookup_tz(lat, lon)
     fallback = Loc(name=f"{lat:.3f}, {lon:.3f}", lat=round(float(lat), 4),
                    lon=round(float(lon), 4), tz=tz)
     try:

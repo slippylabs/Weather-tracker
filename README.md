@@ -72,6 +72,7 @@ collection, not two.
 
     sudo cp deploy/weather.service /etc/systemd/system/
     sudo systemctl daemon-reload && sudo systemctl enable --now weather.service
+    sudo install -D -m 0644 deploy/10-memory.conf /etc/systemd/system/weather.service.d/10-memory.conf
     sudo cp deploy/security-headers-geo.conf /etc/nginx/snippets/
     sudo cp deploy/weather.slippylabs.com.conf /etc/nginx/sites-available/
     sudo ln -sf ../sites-available/weather.slippylabs.com.conf /etc/nginx/sites-enabled/
@@ -85,6 +86,16 @@ The vhost includes `snippets/security-headers-geo.conf` instead of the
 estate-wide `security-headers.conf`: the shared one sends
 `Permissions-Policy: geolocation=()`, which makes the browser deny "Use my
 location" without ever prompting. The copy differs only in `geolocation=(self)`.
+
+Abuse limits (2026-10-16): the per-IP budgets key on nginx's `X-Real-IP`
+(Cloudflare-resolved), never on client-supplied `X-Forwarded-For`; at most
+`COLD_MAX` (3) collections run at once, extra callers get the stale copy, a
+202 or a 503 with `Retry-After`; `/api/geocode` and `/api/reverse` answers are
+LRU-cached and only cache misses spend a per-IP budget. The shared forecast
+cache stores no caller-supplied label: name/country/admin1 come from each
+request (cleaned, length-capped), and the tz is derived server-side from
+Open-Meteo (`collect.lookup_tz`), with a valid caller tz only as a fallback.
+`deploy/10-memory.conf` caps memory (MemoryHigh 384M, MemoryMax 768M).
 
 Collector failures (a source erroring, a failed cold or background collection,
 a geocoder error) are logged to the journal: `journalctl -u weather`.
