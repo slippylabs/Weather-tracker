@@ -1752,3 +1752,23 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   color: var(--text-dim);
   line-height: 1.5;
 }
+
+/* ---- phone polish (2026-10-17 mobile audit) --------------------------------
+   iOS Safari zooms the whole page in when a focused field's text is under
+   16px, and does not zoom back out. Touch screens get 16px fields. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]),
+  select, textarea { font-size: 16px; }
+  /* .tool-select / .tool-textarea out-rank a bare element selector; [class]
+     lifts these above any single-class rule. */
+  select[class], textarea[class] { font-size: 16px; }
+}
+/* A phone held sideways is ~780px wide, so the 560px touch blocks above never
+   reach it and every control drops back to its mouse size (26px unit tabs,
+   33-37px buttons). Short touch screens get the same thumb sizes. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .tool-btn, .tool-select, .tool-text-input, .tool-number-input, .hud-tab, .hud-btn, .tool-check { min-height: 44px; }
+  .nav-links .logout-link, .nav-links .home-link, .callsign-row .home-link, .login-btn, .logout-link {
+    min-height: 44px; display: inline-flex; align-items: center;
+  }
+}
