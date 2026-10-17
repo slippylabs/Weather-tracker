@@ -1772,3 +1772,12 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
     min-height: 44px; display: inline-flex; align-items: center;
   }
 }
+
+/* At 320px "METEOROLOGICAL" in the callsign could not shrink (flex items keep
+   their min-content width), pushing the nav chip 8px past the edge and the
+   page to 328px. Give the callsign the row and let the chip wrap below it. */
+@media (max-width: 380px) {
+  .callsign-row { flex-wrap: wrap; }
+  .callsign { flex: 1 1 150px; min-width: 0; }
+  .nav-links { margin-left: auto; }
+}
