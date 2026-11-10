@@ -1,14 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
 :root {
-  --hud-green: #39ff8f;
-  --hud-green-dim: #1c8a52;
+  --hud-green: var(--hud-green);
+  --hud-green-dim: var(--hud-green-dim);
   --hud-orange: #ff9130;
   --hud-red: #ff4655;
   --bg-deep: #050b10;
-  --bg-panel: rgba(12, 26, 22, 0.92);
-  --panel-border: rgba(57, 255, 143, 0.35);
-  --text-main: #d9fbe8;
+  --bg-panel: var(--bg-panel);
+  --panel-border: color-mix(in srgb, var(--hud-green) 35%, transparent);
+  --text-main: var(--text-main);
   --text-dim: #7fa695;
 }
 
@@ -81,7 +79,7 @@ body {
 }
 .asteroid-spin svg { display: block; width: 100%; height: 100%; }
 .asteroid-spin polygon {
-  fill: rgba(12, 26, 22, 0.6);
+  fill: var(--bg-panel);
   stroke: var(--hud-green-dim);
   stroke-width: 1.4;
 }
@@ -101,8 +99,8 @@ body {
   pointer-events: none;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(57, 255, 143, 0.03),
-    rgba(57, 255, 143, 0.03) 1px,
+    color-mix(in srgb, var(--hud-green) 3%, transparent),
+    color-mix(in srgb, var(--hud-green) 3%, transparent) 1px,
     transparent 2px,
     transparent 3px
   );
@@ -127,7 +125,7 @@ body {
   background: var(--bg-panel);
   border: 1px solid var(--panel-border);
   padding: 36px 32px;
-  box-shadow: 0 0 40px rgba(57, 255, 143, 0.08), inset 0 0 60px rgba(0,0,0,0.4);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--hud-green) 8%, transparent), inset 0 0 60px var(--surface-2);
 }
 .hud-panel.wide { max-width: 860px; }
 .hud-panel.xwide { max-width: 1040px; }
@@ -140,11 +138,11 @@ body {
 
 .callsign-row { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
 .toad-avatar-wrap { position: relative; flex-shrink: 0; width: 46px; height: 46px; }
-.toad-avatar { filter: drop-shadow(0 0 6px rgba(57, 255, 143, 0.5)); }
+.toad-avatar { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--hud-green) 50%, transparent)); }
 .lock-reticle {
   position: absolute;
   inset: -6px;
-  border: 1px dashed rgba(57, 255, 143, 0.5);
+  border: 1px dashed color-mix(in srgb, var(--hud-green) 50%, transparent);
   border-radius: 50%;
   animation: reticle-spin 6s linear infinite;
 }
@@ -156,7 +154,7 @@ body {
 @keyframes reticle-spin { to { transform: rotate(360deg); } }
 
 .callsign {
-  font-family: "Press Start 2P", "Consolas", monospace;
+  font-family: "Chakra Petch", "Consolas", monospace;
   font-size: 9px;
   letter-spacing: 0.1em;
   line-height: 1.6;
@@ -179,13 +177,13 @@ body {
 .logout-link:hover { color: var(--hud-green); border-color: var(--hud-green); }
 
 h1 {
-  font-family: "Press Start 2P", "Consolas", monospace;
+  font-family: "Chakra Petch", "Consolas", monospace;
   font-size: 1.15rem;
   line-height: 1.6;
   margin: 10px 0 8px;
   letter-spacing: 0.02em;
   color: var(--hud-green);
-  text-shadow: 0 0 12px rgba(57, 255, 143, 0.45);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--hud-green) 45%, transparent);
 }
 
 .subtitle {
@@ -210,7 +208,7 @@ h1 {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-dim);
-  background: rgba(0,0,0,0.3);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   padding: 6px 12px;
   cursor: pointer;
@@ -220,8 +218,8 @@ h1 {
 .hud-tab.active {
   color: var(--hud-green);
   border-color: var(--hud-green);
-  background: rgba(57, 255, 143, 0.12);
-  box-shadow: 0 0 10px rgba(57,255,143,0.15);
+  background: color-mix(in srgb, var(--hud-green) 12%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hud-green) 15%, transparent);
 }
 
 /* ---- console grid / cards ---- */
@@ -233,7 +231,7 @@ h1 {
 }
 .console-card {
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-2);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -313,7 +311,7 @@ a.dl {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-a.dl:hover { background: rgba(57, 255, 143, 0.14); }
+a.dl:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); }
 
 /* ---- comm-link transmission window ---- */
 .comm-window {
@@ -321,7 +319,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   display: flex;
   align-items: stretch;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   position: relative;
   overflow: hidden;
 }
@@ -331,10 +329,10 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(57, 255, 143, 0.06);
+  background: color-mix(in srgb, var(--hud-green) 6%, transparent);
   border-right: 1px solid var(--panel-border);
 }
-.comm-portrait svg { filter: drop-shadow(0 0 6px rgba(57, 255, 143, 0.5)); }
+.comm-portrait svg { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--hud-green) 50%, transparent)); }
 .comm-body { padding: 10px 12px; flex: 1; min-width: 0; }
 .comm-label {
   font-size: 0.6rem;
@@ -360,11 +358,11 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   width: 100%;
   margin-top: 24px;
   padding: 14px 12px;
-  background: linear-gradient(180deg, rgba(57,255,143,0.18), rgba(57,255,143,0.06));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hud-green) 18%, transparent), color-mix(in srgb, var(--hud-green) 6%, transparent));
   border: 1px solid var(--hud-green);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -3px 0 rgba(0,0,0,0.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -3px 0 var(--surface-2);
   color: var(--hud-green);
-  font-family: "Press Start 2P", "Consolas", monospace;
+  font-family: "Chakra Petch", "Consolas", monospace;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   font-size: 0.62rem;
@@ -373,7 +371,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   cursor: pointer;
   transition: background 0.15s, transform 0.05s;
 }
-.hud-btn:hover { background: rgba(57, 255, 143, 0.28); }
+.hud-btn:hover { background: color-mix(in srgb, var(--hud-green) 28%, transparent); }
 .hud-btn:active { transform: translateY(2px); }
 
 @media (max-width: 480px) {
@@ -396,7 +394,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   width: 100%;
   min-height: 160px;
   resize: vertical;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--text-main);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
@@ -408,7 +406,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
 .tool-textarea:focus { outline: none; border-color: var(--hud-green); }
 
 .tool-text-input {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--text-main);
   font-family: inherit;
@@ -424,7 +422,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   min-height: 90px;
   max-height: 420px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--hud-green);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
@@ -446,13 +444,13 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--hud-green);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   border: 1px solid var(--hud-green-dim);
   padding: 9px 16px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.tool-btn:hover { background: rgba(57, 255, 143, 0.14); border-color: var(--hud-green); }
+.tool-btn:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); border-color: var(--hud-green); }
 .tool-btn:active { transform: translateY(1px); }
 .tool-btn.ghost { color: var(--text-dim); border-color: var(--panel-border); }
 .tool-btn.ghost:hover { color: var(--hud-green); border-color: var(--hud-green-dim); }
@@ -464,7 +462,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
 .tool-slider-row { display: flex; align-items: center; gap: 12px; }
 .tool-slider-row input[type="range"] { flex: 1; accent-color: var(--hud-green); }
 .tool-slider-value {
-  font-family: "Press Start 2P", monospace;
+  font-family: "Chakra Petch", monospace;
   font-size: 0.8rem;
   color: var(--hud-green);
   min-width: 34px;
@@ -472,15 +470,15 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
 }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; }
-.stat-tile { border: 1px solid var(--panel-border); background: rgba(0, 0, 0, 0.25); padding: 12px; text-align: center; }
-.stat-tile .stat-value { font-family: "Press Start 2P", monospace; font-size: 0.95rem; color: var(--hud-green); display: block; margin-bottom: 8px; }
+.stat-tile { border: 1px solid var(--panel-border); background: var(--surface-2); padding: 12px; text-align: center; }
+.stat-tile .stat-value { font-family: "Chakra Petch", monospace; font-size: 0.95rem; color: var(--hud-green); display: block; margin-bottom: 8px; }
 .stat-tile .stat-label { font-size: 0.6rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
 
 .md-preview {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   padding: 14px;
   min-height: 160px;
@@ -492,8 +490,8 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
 }
 .md-preview h1, .md-preview h2, .md-preview h3 { color: var(--hud-green); font-family: inherit; text-shadow: none; margin: 0.6em 0 0.3em; }
 .md-preview h1:first-child, .md-preview h2:first-child, .md-preview h3:first-child { margin-top: 0; }
-.md-preview code { background: rgba(57, 255, 143, 0.1); padding: 1px 5px; font-size: 0.9em; }
-.md-preview pre { background: rgba(0, 0, 0, 0.4); padding: 10px; overflow-x: auto; border: 1px solid var(--panel-border); }
+.md-preview code { background: color-mix(in srgb, var(--hud-green) 10%, transparent); padding: 1px 5px; font-size: 0.9em; }
+.md-preview pre { background: var(--surface-2); padding: 10px; overflow-x: auto; border: 1px solid var(--panel-border); }
 .md-preview pre code { background: none; padding: 0; }
 .md-preview a { color: var(--hud-orange); }
 .md-preview blockquote { border-left: 2px solid var(--hud-green-dim); margin: 0.5em 0; padding: 2px 12px; color: var(--text-dim); }
@@ -504,7 +502,7 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
 .password-display { display: flex; gap: 8px; margin-bottom: 16px; }
 .password-display input {
   flex: 1;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--hud-green);
   font-family: "Consolas", monospace;
@@ -514,14 +512,14 @@ a.dl:hover { background: rgba(57, 255, 143, 0.14); }
   min-width: 0;
 }
 
-.strength-bar { height: 6px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--panel-border); margin-bottom: 6px; overflow: hidden; }
+.strength-bar { height: 6px; background: var(--surface-2); border: 1px solid var(--panel-border); margin-bottom: 6px; overflow: hidden; }
 .strength-fill { height: 100%; width: 0%; background: var(--hud-red); transition: width 0.2s, background 0.2s; }
 .strength-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 18px; }
 
-mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green); padding: 0 1px; border-radius: 1px; }
+mark.regex-match { background: color-mix(in srgb, var(--hud-green) 30%, transparent); color: var(--hud-green); padding: 0 1px; border-radius: 1px; }
 
 .match-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.match-list li { border: 1px solid var(--panel-border); background: rgba(0, 0, 0, 0.25); padding: 8px 10px; font-size: 0.78rem; }
+.match-list li { border: 1px solid var(--panel-border); background: var(--surface-2); padding: 8px 10px; font-size: 0.78rem; }
 .match-list .match-index { color: var(--hud-orange); margin-right: 8px; }
 
 .copy-toast { font-size: 0.68rem; color: var(--hud-green); margin-left: 2px; opacity: 0; }
@@ -538,17 +536,17 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--hud-green);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   border: 1px solid var(--hud-green-dim);
   padding: 9px 16px;
   cursor: pointer;
   margin-right: 12px;
   transition: background 0.15s, border-color 0.15s;
 }
-.tool-file-input::file-selector-button:hover { background: rgba(57, 255, 143, 0.14); border-color: var(--hud-green); }
+.tool-file-input::file-selector-button:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); border-color: var(--hud-green); }
 
 .tool-select {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--text-main);
   font-family: inherit;
@@ -577,11 +575,11 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   width: 100%;
   max-height: 340px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   display: block;
 }
 
-.progress-bar { height: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--panel-border); overflow: hidden; margin: 4px 0 10px; }
+.progress-bar { height: 8px; background: var(--surface-2); border: 1px solid var(--panel-border); overflow: hidden; margin: 4px 0 10px; }
 .progress-fill { height: 100%; width: 0%; background: var(--hud-green); transition: width 0.15s; }
 
 /* ---- Slippy TV ---- */
@@ -590,7 +588,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 16px;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(57, 255, 143, 0.06);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6), 0 0 24px color-mix(in srgb, var(--hud-green) 6%, transparent);
 }
 .tv-screen {
   position: relative;
@@ -617,7 +615,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   gap: 10px;
   background: #000;
   color: var(--hud-green-dim);
-  font-family: "Press Start 2P", monospace;
+  font-family: "Chakra Petch", monospace;
   font-size: 0.68rem;
   letter-spacing: 0.05em;
   text-align: center;
@@ -638,10 +636,10 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   gap: 10px;
   background: rgba(0, 0, 0, 0.55);
   color: var(--hud-green);
-  font-family: "Press Start 2P", monospace;
+  font-family: "Chakra Petch", monospace;
   font-size: 0.65rem;
   letter-spacing: 0.05em;
-  text-shadow: 0 0 8px rgba(57, 255, 143, 0.5);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--hud-green) 50%, transparent);
   opacity: 0;
   pointer-events: none;
 }
@@ -662,7 +660,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   opacity: 0;
   background:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.12) 0px, rgba(255, 255, 255, 0.12) 1px, transparent 1px, transparent 3px),
-    repeating-linear-gradient(90deg, rgba(57, 255, 143, 0.06) 0px, transparent 2px);
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--hud-green) 6%, transparent) 0px, transparent 2px);
 }
 .tv-screen.flicker .tv-static-overlay { animation: tv-flicker-anim 0.35s steps(6) forwards; }
 @keyframes tv-flicker-anim {
@@ -674,7 +672,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .tv-power-btn {
   padding: 9px 14px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   color: var(--text-dim);
   font-family: inherit;
   font-size: 0.72rem;
@@ -689,20 +687,20 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 }
 .tv-power-btn:hover { border-color: var(--hud-green-dim); color: var(--hud-green); }
 .tv-power-btn.on {
-  background: rgba(57, 255, 143, 0.16);
+  background: color-mix(in srgb, var(--hud-green) 16%, transparent);
   border-color: var(--hud-green);
   color: var(--hud-green);
-  box-shadow: 0 0 10px rgba(57, 255, 143, 0.3);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hud-green) 30%, transparent);
 }
 
 .channel-readout {
-  font-family: "Press Start 2P", monospace;
+  font-family: "Chakra Petch", monospace;
   font-size: 0.8rem;
   color: var(--hud-green);
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--panel-border);
   padding: 10px 14px;
-  text-shadow: 0 0 8px rgba(57, 255, 143, 0.5);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--hud-green) 50%, transparent);
   min-width: 140px;
   text-align: center;
   flex-shrink: 0;
@@ -712,13 +710,13 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   width: 40px;
   height: 40px;
   border: 1px solid var(--hud-green-dim);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   color: var(--hud-green);
   font-size: 1rem;
   cursor: pointer;
   flex-shrink: 0;
 }
-.tv-nav-btn:hover { background: rgba(57, 255, 143, 0.14); border-color: var(--hud-green); }
+.tv-nav-btn:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); border-color: var(--hud-green); }
 
 .volume-row { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 180px; }
 .volume-row input[type="range"] { flex: 1; accent-color: var(--hud-green); }
@@ -728,7 +726,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   width: 36px;
   height: 36px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   color: var(--text-main);
   font-size: 1rem;
   cursor: pointer;
@@ -742,7 +740,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   align-items: center;
   gap: 8px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-2);
   color: var(--text-main);
   padding: 10px 12px;
   font-family: inherit;
@@ -753,23 +751,23 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .channel-btn:hover { border-color: var(--hud-green-dim); }
 .channel-btn.active {
   border-color: var(--hud-green);
-  background: rgba(57, 255, 143, 0.1);
+  background: color-mix(in srgb, var(--hud-green) 10%, transparent);
   color: var(--hud-green);
-  box-shadow: 0 0 10px rgba(57, 255, 143, 0.12);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hud-green) 12%, transparent);
 }
 .channel-btn .ch-num {
-  font-family: "Press Start 2P", monospace;
+  font-family: "Chakra Petch", monospace;
   font-size: 0.58rem;
   color: var(--hud-orange);
   flex-shrink: 0;
 }
 
 /* ---- calculators (Simple Calculator, Tip Calculator) ---- */
-/* Numeric displays use a plain monospace font, never "Press Start 2P" —
+/* Numeric displays use a plain monospace font, never "Chakra Petch" —
    that pixel font draws 8 as S and 0 as O at small sizes. */
 .calc-display {
   width: 100%;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--hud-green);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
@@ -796,13 +794,13 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
   font-size: 1.15rem;
   color: var(--text-main);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   padding: 16px 0;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.calc-key:hover { background: rgba(57, 255, 143, 0.14); border-color: var(--hud-green); }
+.calc-key:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); border-color: var(--hud-green); }
 .calc-key:active { transform: translateY(1px); }
 .calc-key.calc-op { color: var(--hud-orange); border-color: rgba(255, 145, 48, 0.35); }
 .calc-key.calc-op:hover { background: rgba(255, 145, 48, 0.14); border-color: var(--hud-orange); }
@@ -813,7 +811,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .calc-key.calc-zero { grid-column: span 2; }
 
 .calc-result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
-.calc-result-tile { border: 1px solid var(--panel-border); background: rgba(0, 0, 0, 0.25); padding: 14px 12px; text-align: center; }
+.calc-result-tile { border: 1px solid var(--panel-border); background: var(--surface-2); padding: 14px 12px; text-align: center; }
 .calc-result-tile .calc-result-value {
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
   font-size: 1.25rem;
@@ -822,7 +820,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   margin-bottom: 8px;
 }
 .calc-result-tile .calc-result-label { font-size: 0.6rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
-.calc-result-tile.highlight { border-color: var(--hud-green-dim); background: rgba(57, 255, 143, 0.06); }
+.calc-result-tile.highlight { border-color: var(--hud-green-dim); background: color-mix(in srgb, var(--hud-green) 6%, transparent); }
 .calc-result-tile.highlight .calc-result-value { font-size: 1.55rem; }
 
 .calc-slider-value {
@@ -839,18 +837,18 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   font-size: 0.72rem;
   letter-spacing: 0.03em;
   color: var(--text-main);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   padding: 8px 14px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.tip-quick-btn:hover { background: rgba(57, 255, 143, 0.14); border-color: var(--hud-green); }
-.tip-quick-btn.active { color: var(--hud-green); border-color: var(--hud-green); background: rgba(57, 255, 143, 0.14); }
+.tip-quick-btn:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); border-color: var(--hud-green); }
+.tip-quick-btn.active { color: var(--hud-green); border-color: var(--hud-green); background: color-mix(in srgb, var(--hud-green) 14%, transparent); }
 
 .tool-number-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--hud-green);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
@@ -868,7 +866,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   gap: 16px;
   padding: 16px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   margin: 20px 0;
 }
 .radio-now-playing-info { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 220px; }
@@ -889,16 +887,16 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   height: 42px;
   font-size: 1.1rem;
   color: var(--hud-green);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-2);
   border: 1px solid var(--hud-green-dim);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
-.radio-play-btn:hover { background: rgba(57, 255, 143, 0.14); border-color: var(--hud-green); }
+.radio-play-btn:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); border-color: var(--hud-green); }
 .radio-play-btn.playing {
-  background: rgba(57, 255, 143, 0.16);
+  background: color-mix(in srgb, var(--hud-green) 16%, transparent);
   border-color: var(--hud-green);
-  box-shadow: 0 0 10px rgba(57, 255, 143, 0.3);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hud-green) 30%, transparent);
 }
 
 .radio-status {
@@ -909,7 +907,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   color: var(--text-dim);
 }
 .radio-status.tuning { color: var(--hud-orange); }
-.radio-status.on-air { color: var(--hud-green); text-shadow: 0 0 8px rgba(57, 255, 143, 0.5); }
+.radio-status.on-air { color: var(--hud-green); text-shadow: 0 0 8px color-mix(in srgb, var(--hud-green) 50%, transparent); }
 .radio-status.paused { color: var(--text-dim); }
 .radio-status.error { color: var(--hud-red); }
 
@@ -929,8 +927,8 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 
 .station-card.playing {
   border-color: var(--hud-green);
-  background: rgba(57, 255, 143, 0.04);
-  box-shadow: 0 0 10px rgba(57, 255, 143, 0.12);
+  background: color-mix(in srgb, var(--hud-green) 4%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hud-green) 12%, transparent);
 }
 
 .station-tune-btn {
@@ -946,8 +944,8 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.station-tune-btn:hover { background: rgba(57, 255, 143, 0.14); }
-.station-tune-btn.playing { background: rgba(57, 255, 143, 0.22); border-color: var(--hud-green); color: var(--hud-green); }
+.station-tune-btn:hover { background: color-mix(in srgb, var(--hud-green) 14%, transparent); }
+.station-tune-btn.playing { background: color-mix(in srgb, var(--hud-green) 22%, transparent); border-color: var(--hud-green); color: var(--hud-green); }
 
 /* ---- search bar (project archive) ---- */
 .search-bar { position: relative; margin-bottom: 18px; }
@@ -1025,7 +1023,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   justify-content: center;
 }
 .swatch-lock:hover { color: var(--hud-green); }
-.swatch-lock.locked { color: var(--hud-green); border-color: var(--hud-green); background: rgba(57, 255, 143, 0.14); }
+.swatch-lock.locked { color: var(--hud-green); border-color: var(--hud-green); background: color-mix(in srgb, var(--hud-green) 14%, transparent); }
 @media (max-width: 560px) {
   .palette-grid { flex-wrap: wrap; }
   .swatch { flex: 1 1 calc(33.33% - 8px); aspect-ratio: 1 / 1; }
@@ -1036,7 +1034,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   width: 100%;
   max-height: 420px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
   font-size: 0.8rem;
@@ -1044,7 +1042,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 }
 .diff-line { padding: 1px 10px; white-space: pre-wrap; word-break: break-word; }
 .diff-line .diff-marker { display: inline-block; width: 1.4em; opacity: 0.7; }
-.diff-line.added { background: rgba(57, 255, 143, 0.12); color: var(--hud-green); }
+.diff-line.added { background: color-mix(in srgb, var(--hud-green) 12%, transparent); color: var(--hud-green); }
 .diff-line.removed { background: rgba(255, 70, 85, 0.12); color: var(--hud-red); }
 .diff-line.same { color: var(--text-dim); }
 
@@ -1064,7 +1062,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 /* Deliberately not .tool-output: that wraps long lines, which shears the
    picture in half. ASCII art needs `pre` and a line-height of exactly 1. */
 .ascii-output {
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--hud-green);
   font-family: "Consolas", "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
@@ -1129,7 +1127,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .stop-row .tool-text-input { flex: 1; min-width: 0; }
 .stop-row input[type="range"] { flex: 2; accent-color: var(--hud-green); }
 .stop-remove {
-  background: rgba(0,0,0,0.3);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   color: var(--text-dim);
   cursor: pointer;
@@ -1193,7 +1191,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   width: 46px;
   height: 34px;
   padding: 2px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   cursor: pointer;
 }
@@ -1277,7 +1275,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
    compositor transform now and costs essentially nothing. What this drops are
    the two effects that force full-viewport work every frame -- mix-blend-mode
    compositing and backdrop-filter blur. */
-.perf-lite { --bg-panel: rgba(12, 26, 22, 0.95); }
+.perf-lite { --bg-panel: var(--bg-panel); }
 .perf-lite .scanlines { mix-blend-mode: normal; opacity: 0.4; }
 .perf-lite .starfield,
 .perf-lite .asteroid,
@@ -1298,7 +1296,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 /* ---- shared tool components (used by several of the 2026-08-21 batch) -----
    Readout tiles, scrolling result tables and the error variant of .tool-note.
    Every value shown through these is a number, an address or a hex string, so
-   nothing here may use "Press Start 2P" — that face renders 8 as S and 0 as O. */
+   nothing here may use "Chakra Petch" — that face renders 8 as S and 0 as O. */
 
 .net-grid {
   display: grid;
@@ -1310,7 +1308,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 
 .net-tile {
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-2);
   padding: 10px 12px;
 }
 .net-tile-label {
@@ -1348,7 +1346,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .net-table th {
   text-align: left;
   padding: 8px 12px;
-  background: rgba(57, 255, 143, 0.08);
+  background: color-mix(in srgb, var(--hud-green) 8%, transparent);
   color: var(--text-dim);
   font-size: 0.6rem;
   letter-spacing: 0.05em;
@@ -1358,7 +1356,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .net-table td {
   padding: 7px 12px;
   color: var(--text-main);
-  border-bottom: 1px solid rgba(57, 255, 143, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--hud-green) 12%, transparent);
 }
 .net-table tr:last-child td { border-bottom: none; }
 .net-table td.yes { color: var(--hud-green); }
@@ -1394,7 +1392,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .finding {
   border: 1px solid var(--panel-border);
   border-left-width: 3px;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--surface-2);
   padding: 12px 14px;
   margin: 0 0 12px;
 }
@@ -1441,7 +1439,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 
 .net-tile.highlight {
   border-color: var(--hud-green);
-  background: rgba(57, 255, 143, 0.08);
+  background: color-mix(in srgb, var(--hud-green) 8%, transparent);
 }
 .net-tile.highlight .net-tile-value { font-size: 1.05rem; }
 
@@ -1462,7 +1460,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   overflow: hidden;
 }
 .split-part.principal {
-  background: rgba(57, 255, 143, 0.22);
+  background: color-mix(in srgb, var(--hud-green) 22%, transparent);
   color: var(--hud-green);
 }
 .split-part.interest {
@@ -1472,7 +1470,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 
 .chart-frame {
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--surface-2);
   padding: 8px;
   margin-bottom: 12px;
 }
@@ -1495,7 +1493,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 
 /* ---- weather consensus components (weather.slippylabs.com) ----------------
    Everything here shows a number -- a temperature, a percentage, a wind
-   speed -- so nothing in this block may use "Press Start 2P": that face
+   speed -- so nothing in this block may use "Chakra Petch": that face
    renders 8 as S and 0 as O, which is fatal for the one thing this page is
    for. Monospace throughout, like the calculator readouts.
    No `transition: opacity` anywhere either; these all sit under .hud-panel,
@@ -1533,7 +1531,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 }
 .wx-result:hover, .wx-result:focus-visible {
   outline: none;
-  background: rgba(57, 255, 143, 0.08);
+  background: color-mix(in srgb, var(--hud-green) 8%, transparent);
   border-left-color: var(--hud-green);
 }
 .wx-result-name { font-size: 14px; color: var(--text-main); }
@@ -1557,7 +1555,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   font-family: inherit;
   font-size: 12px;
   color: var(--text-main);
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-2);
   border: 1px solid var(--panel-border);
   padding: 7px 12px;
   cursor: pointer;
@@ -1593,7 +1591,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   margin: 4px 0 14px;
   padding: 14px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-2);
 }
 .wx-planner-intro { margin: 0 0 12px; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
 .wx-planner-row {
@@ -1614,11 +1612,11 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .wx-day {
   padding: 14px 16px;
   border: 1px solid var(--panel-border);
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--surface-2);
   cursor: pointer;
 }
 .wx-day:focus-visible { outline: 2px solid var(--hud-green); outline-offset: 2px; }
-.wx-day.is-key { border-color: var(--hud-green); background: rgba(57, 255, 143, 0.06); }
+.wx-day.is-key { border-color: var(--hud-green); background: color-mix(in srgb, var(--hud-green) 6%, transparent); }
 .wx-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .wx-when { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .wx-dow { font-size: 15px; color: var(--text-main); letter-spacing: 0.06em; }
@@ -1651,13 +1649,13 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 
 .wx-bar { position: relative; height: 8px; margin-top: 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--panel-border); }
 .wx-bar-empty { opacity: 0.35; }
-.wx-band { position: absolute; top: 0; bottom: 0; background: rgba(57, 255, 143, 0.18); }
+.wx-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--hud-green) 18%, transparent); }
 .wx-fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; background: var(--hud-green-dim); transition: width 600ms ease; }
 .wx-tick { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--hud-green); }
 .wx-meta { margin: 8px 0 0; font-size: 11px; color: var(--text-dim); line-height: 1.6; }
 
 /* verdict */
-.wx-verdict { margin-top: 12px; padding: 12px; border-left: 3px solid var(--text-dim); background: rgba(0, 0, 0, 0.3); }
+.wx-verdict { margin-top: 12px; padding: 12px; border-left: 3px solid var(--text-dim); background: var(--surface-2); }
 .wx-verdict.wx-good { border-left-color: var(--hud-green); }
 .wx-verdict.wx-watch { border-left-color: var(--hud-orange); }
 .wx-verdict.wx-concern { border-left-color: var(--hud-red); }
@@ -1665,7 +1663,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .wx-verdict-label { color: var(--text-dim); }
 .wx-verdict-text { color: var(--text-main); }
 .wx-factors { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.wx-factor { display: flex; gap: 6px; align-items: baseline; padding: 5px 9px; border: 1px solid var(--panel-border); background: rgba(0, 0, 0, 0.3); }
+.wx-factor { display: flex; gap: 6px; align-items: baseline; padding: 5px 9px; border: 1px solid var(--panel-border); background: var(--surface-2); }
 .wx-factor-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
 .wx-factor-val { font-size: 12px; color: var(--text-main); }
 .wx-factor.wx-good .wx-factor-val { color: var(--hud-green); }
@@ -1690,7 +1688,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 }
 .wx-hour-na { background: rgba(127, 166, 149, 0.25); }
 .wx-in-window { background: var(--hud-green); }
-.wx-hour-edge { position: absolute; top: -64px; bottom: 0; left: 0; width: 1px; background: rgba(57, 255, 143, 0.5); }
+.wx-hour-edge { position: absolute; top: -64px; bottom: 0; left: 0; width: 1px; background: color-mix(in srgb, var(--hud-green) 50%, transparent); }
 .wx-hour-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--text-dim); }
 .wx-window-cap { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 11px; color: var(--text-dim); }
 .wx-swatch { width: 12px; height: 12px; background: var(--hud-green); flex: 0 0 auto; }
@@ -1703,7 +1701,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
   gap: 12px;
   align-items: baseline;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(57, 255, 143, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--hud-green) 12%, transparent);
 }
 .wx-per-source li:last-child { border-bottom: 0; }
 .wx-src-name { font-size: 12px; color: var(--text-main); display: flex; flex-direction: column; gap: 2px; }
@@ -1718,7 +1716,7 @@ mark.regex-match { background: rgba(57, 255, 143, 0.3); color: var(--hud-green);
 .wx-method { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--panel-border); }
 .wx-method h2 { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-green); margin: 0 0 10px; }
 .wx-method p { font-size: 12px; color: var(--text-dim); line-height: 1.7; margin: 0 0 10px; }
-.wx-sources li { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid rgba(57, 255, 143, 0.12); }
+.wx-sources li { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--hud-green) 12%, transparent); }
 .wx-sources li:last-child { border-bottom: 0; }
 .wx-sources a { color: var(--text-main); font-size: 12px; text-decoration: none; min-height: 24px; display: inline-flex; align-items: center; }
 .wx-sources a:hover, .wx-sources a:focus-visible { color: var(--hud-green); text-decoration: underline; }

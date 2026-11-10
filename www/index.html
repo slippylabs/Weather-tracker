@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="ui-tool">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,12 +17,35 @@
 <meta name="twitter:description" content="Consensus weather forecast for anywhere on Earth, averaged across nine sources including weather.com, AccuWeather, NWS and the ECMWF and GEFS ensembles.">
 <meta name="twitter:image" content="https://weather.slippylabs.com/og-image.png?h=10b20e9ac7">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234%22%20r%3D%2222%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E">
-<meta name="theme-color" content="#050b10">
-<link rel="stylesheet" href="style.css?v=4">
+<meta name="theme-color" content="#0b0f0d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="style.css?v=5">
+<script>(function(){try{var d=document.documentElement,m=document.cookie.match(/(?:^|;\s*)slippy_prefs=([^;]*)/),p={};if(m)decodeURIComponent(m[1]).split(".").forEach(function(kv){var i=kv.indexOf("=");p[kv.slice(0,i)]=kv.slice(i+1);});var t=p.t||(m?"":localStorage.getItem("slippy-theme"));if(t==="light"||t==="dark")d.setAttribute("data-theme",t);if(p.a&&p.a!=="mint")d.setAttribute("data-accent",p.a);if(p.x==="large")d.setAttribute("data-text","large");if(p.c==="1")d.setAttribute("data-compact","");if(p.m==="1")d.setAttribute("data-calm","");}catch(e){}})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://slippylabs.com/ui/ui.css?v=7">
+<link rel="stylesheet" href="https://slippylabs.com/ui/legacy.css?v=5">
 <script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
 (function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
 </head>
 <body>
+<header class="ui-topbar">
+  <div class="ui-wrap">
+    <a class="ui-brand" href="https://slippylabs.com/" aria-label="Slippy Labs home"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="35" r="21" fill="var(--accent)"/><circle cx="20" cy="17" r="9" fill="var(--accent)"/><circle cx="44" cy="17" r="9" fill="var(--accent)"/><circle cx="20" cy="17" r="3.6" fill="var(--surface)"/><circle cx="44" cy="17" r="3.6" fill="var(--surface)"/><path d="M22 41 Q32 48 42 41" stroke="var(--surface)" stroke-width="3" fill="none" stroke-linecap="round"/></svg><span>Slippy Labs</span></a>
+    <nav class="ui-nav" aria-label="Sections">
+      <a href="https://slippylabs.com/#tab=play">Games</a>
+      <a href="https://slippylabs.com/#tab=make" aria-current="page">Tools</a>
+      <a href="https://music.slippylabs.com/">Media</a>
+      <a href="https://news.slippylabs.com/">News</a>
+    </nav>
+    <button class="ui-searchbtn" type="button" data-ui-search aria-label="Search everything"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="m13 13 5 5" stroke-linecap="round"/></svg><span>Search everything</span><kbd>/</kbd></button>
+    <div class="ui-actions auth-controls">
+      <a class="ui-btn primary login-btn" id="auth-btn" href="https://admin.slippylabs.com/login">Log in</a>
+    </div>
+  </div>
+</header>
+
 
 <div class="starfield"></div>
 <div class="scanlines"></div>
@@ -34,28 +57,10 @@
     <div class="corner bl"></div>
     <div class="corner br"></div>
 
-    <div class="callsign-row">
-      <div class="toad-avatar-wrap">
-        <svg class="toad-avatar" width="46" height="46" viewBox="0 0 64 64">
-          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
-          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
-          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
-          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
-          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
-          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
-          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
-          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
-          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
-          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
-        </svg>
-        <div class="lock-reticle"></div>
-      </div>
-      <span class="callsign">Meteorological Division // Consensus</span>
-      <div class="nav-links">
-        <a href="https://projects.slippylabs.com/" class="logout-link">← Archive</a>
-      </div>
-    </div>
+    
+    <nav class="ui-backrow" aria-label="Back and home"><a class="ui-backbtn" href="https://projects.slippylabs.com/" data-ui-back title="Back to Projects"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg><span>Back</span></a><a class="ui-backbtn" href="https://slippylabs.com/" title="Slippy Labs home"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 10 3.5l7 6V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><p class="ui-crumbs"><a href="https://slippylabs.com/">Slippy Labs</a> / <a href="https://projects.slippylabs.com/">Projects</a> / Weather Outlook</p></nav>
 
+    
     <h1>WEATHER OUTLOOK</h1>
     <p class="subtitle">Nine forecast sources for anywhere on Earth, averaged into one number — and the spread between them, so you can see when they disagree.</p>
 
@@ -144,8 +149,15 @@
       </div>
     </div>
 
-    <a href="https://projects.slippylabs.com/" class="hud-btn">← Back to Archive</a>
+    <nav class="ui-backrow foot" aria-label="Back and home"><a class="ui-backbtn" href="https://projects.slippylabs.com/" data-ui-back title="Back to Projects"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg><span>Back to Projects</span></a><a class="ui-backbtn" href="https://slippylabs.com/" title="Slippy Labs home"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 10 3.5l7 6V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a></nav>
   </div>
+  <footer class="ui-foot">
+    <a href="https://slippylabs.com/">Slippy Labs home</a>
+    <a href="https://slippylabs.com/privacy.html">Privacy</a>
+    <a href="https://slippylabs.com/report.html?site=weather.slippylabs.com">Report a problem</a>
+    <span class="ui-sp"></span>
+    <a href="https://github.com/slippylabs">GitHub</a>
+  </footer>
 </main>
 
 <template id="day-tpl">
@@ -206,5 +218,7 @@
    adding a scrollbar to a page that had none. */
 .page-wrap{min-height:calc(100vh - 64px)}
 </style>
+<script src="https://slippylabs.com/ui/search-index.js?v=2"></script>
+<script defer src="https://slippylabs.com/ui/ui.js?v=7"></script>
 </body>
 </html>
