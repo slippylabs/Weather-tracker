@@ -21,10 +21,12 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <link rel="stylesheet" href="style.css?v=5">
 <script>(function(){try{var d=document.documentElement,m=document.cookie.match(/(?:^|;\s*)slippy_prefs=([^;]*)/),p={};if(m)decodeURIComponent(m[1]).split(".").forEach(function(kv){var i=kv.indexOf("=");p[kv.slice(0,i)]=kv.slice(i+1);});var t=p.t||(m?"":localStorage.getItem("slippy-theme"));if(t==="light"||t==="dark")d.setAttribute("data-theme",t);if(p.a&&p.a!=="mint")d.setAttribute("data-accent",p.a);if(p.x==="large")d.setAttribute("data-text","large");if(p.c==="1")d.setAttribute("data-compact","");if(p.m==="1")d.setAttribute("data-calm","");}catch(e){}})();</script>
+<script>/* a11y: apply saved vision prefs before first paint, so a player who needs 150% text never sees a frame at 100%. Same shape as the perf-lite snippet above; the panel itself is https://slippylabs.com/a11y/a11y.js */
+(function(){try{var m=document.cookie.match(/(?:^|;\s*)sl_a11y=([^;]*)/);if(!m)return;var d=document.documentElement,K=["cb","cf","cc","fo","mu","t","c","h","f","v"],P={t:100,c:100,h:0,cb:0,f:0,fo:0,cf:0,v:100,mu:0,cc:0},A={t:[100,115,130,150,175],c:[100,115,130,150]},ok=function(k,v){return A[k]?A[k].indexOf(v)>=0:k==="v"?v<=100:(k==="cb"||k==="cf")?v<=3:v<=1;};decodeURIComponent(m[1]).split(".").forEach(function(s){for(var i=0;i<K.length;i++){var k=K[i];if(s.indexOf(k)===0){var r=s.slice(k.length);if(/^\d+$/.test(r)&&ok(k,+r))P[k]=+r;return;}}});d.style.setProperty("--a11y-text",(P.t/100).toFixed(2));d.style.setProperty("--a11y-card",(P.c/100).toFixed(2));d.dataset.a11yContrast=P.h;d.dataset.a11yCb=P.cb;d.dataset.a11yFont=P.f;d.dataset.a11yFocus=P.fo;d.dataset.a11yCf=P.cf;}catch(e){}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="https://slippylabs.com/ui/ui.css?v=7">
+<link rel="stylesheet" href="https://slippylabs.com/ui/ui.css?v=8">
 <link rel="stylesheet" href="https://slippylabs.com/ui/legacy.css?v=5">
 <script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
 (function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
@@ -58,7 +60,7 @@
     <div class="corner br"></div>
 
     
-    <nav class="ui-backrow" aria-label="Back and home"><a class="ui-backbtn" href="https://projects.slippylabs.com/" data-ui-back title="Back to Projects"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg><span>Back</span></a><a class="ui-backbtn" href="https://slippylabs.com/" title="Slippy Labs home"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 10 3.5l7 6V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><p class="ui-crumbs"><a href="https://slippylabs.com/">Slippy Labs</a> / <a href="https://projects.slippylabs.com/">Projects</a> / Weather Outlook</p></nav>
+    <nav class="ui-backrow" aria-label="Back and home"><a class="ui-backbtn" href="https://projects.slippylabs.com/" data-ui-back title="Back to Projects"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg><span>Back</span></a><a class="ui-backbtn" href="https://slippylabs.com/" title="Slippy Labs home"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 10 3.5l7 6V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a><button type="button" class="ui-backbtn" data-a11y-open title="Accessibility settings"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="3.6" r="1.6"/><path d="M4 7.2l6 1.3 6-1.3M10 8.5v4.2M10 12.7l-3 4.8M10 12.7l3 4.8"/></svg><span>Accessibility</span></button><p class="ui-crumbs"><a href="https://slippylabs.com/">Slippy Labs</a> / <a href="https://projects.slippylabs.com/">Projects</a> / Weather Outlook</p></nav>
 
     
     <h1>WEATHER OUTLOOK</h1>
@@ -219,6 +221,6 @@
 .page-wrap{min-height:calc(100vh - 64px)}
 </style>
 <script src="https://slippylabs.com/ui/search-index.js?v=2"></script>
-<script defer src="https://slippylabs.com/ui/ui.js?v=7"></script>
+<script defer src="https://slippylabs.com/ui/ui.js?v=8"></script>
 </body>
 </html>
